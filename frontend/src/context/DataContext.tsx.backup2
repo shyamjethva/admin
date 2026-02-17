@@ -1,0 +1,266 @@
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import { useAuth } from "./AuthContext";
+
+// Interfaces
+interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  departmentId: string;
+  designationId: string;
+  joiningDate: string;
+  salary: number;
+  status: string;
+}
+
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  author: string;
+}
+
+interface ChatMessage {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+}
+
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  status: string;
+}
+
+interface ClockRecord {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  date: string;
+  checkIn: string;
+  checkOut: string;
+  hours: number;
+  status: string;
+}
+
+interface Absence {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  date: string;
+  reason: string;
+  status: string;
+}
+
+interface DataContextType {
+  employees: Employee[];
+  departments: any[];
+  designations: any[];
+  announcements: Announcement[];
+  chatMessages: ChatMessage[];
+  tasks: any[];
+  clients: Client[];
+  clockRecords: ClockRecord[];
+  absences: Absence[];
+  isClockActive: boolean;
+  setIsClockActive: (active: boolean) => void;
+  toggleClock: () => void;
+  fetchData: (module: string, setter: any, initial: any) => Promise<void>;
+  addClockRecord: (data: any) => Promise<any>;
+  updateClockRecord: (id: string, data: any) => Promise<any>;
+  setClockRecords: any;
+  initialClockRecords: ClockRecord[];
+}
+
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+export const DataProvider = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
+
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clockRecords, setClockRecords] = useState<ClockRecord[]>([]);
+  const [absences, setAbsences] = useState<Absence[]>([]);
+  const [isClockActive, setIsClockActive] = useState(false);
+
+  // Initial data arrays
+  const initialEmployees: Employee[] = [];
+  const initialDepartments: any[] = [];
+  const initialDesignations: any[] = [];
+  const initialAnnouncements: Announcement[] = [];
+  const initialChatMessages: ChatMessage[] = [];
+  const initialTasks: any[] = [];
+  const initialClients: Client[] = [];
+  const initialClockRecords: ClockRecord[] = [];
+  const initialAbsences: Absence[] = [];
+
+  // Toggle clock state
+  const toggleClock = useCallback(() => {
+    setIsClockActive(prev => !prev);
+  }, []);
+
+  // Normalize ID function
+  const normalizeId = (item: any) => ({
+    ...item,
+    id: item._id || item.id,
+  });
+
+  // Fetch data function
+  const fetchData = useCallback(async (module: string, setter: any, initial: any) => {
+    if (!user) return;
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/${module}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${module}`);
+      }
+
+      const data = await response.json();
+      const list = Array.isArray(data) ? data : data.data || [];
+
+      // Handle payroll entries specially
+      if (module === "payroll") {
+        const mapped = list.map((item: any) => ({
+          ...item,
+          status:
+            item.status === "draft"
+              ? "pending"
+              : item.status === "approved"
+              ? "processed"
+              : item.status,
+        }));
+        setter(mapped);
+        return;
+      }
+
+      setter(list.map(normalizeId));
+    } catch (err) {
+      console.error(`Error fetching ${module}:`, err);
+      setter(initial);
+    }
+  }, [user]);
+
+  // Clock record functions
+  const addClockRecord = async (data: any) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/attendance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add clock record");
+      }
+
+      const result = await response.json();
+      setClockRecords(prev => [...prev, normalizeId(result)]);
+      return result;
+    } catch (error) {
+      console.error("Error adding clock record:", error);
+      throw error;
+    }
+  };
+
+  const updateClockRecord = async (id: string, data: any) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/attendance/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update clock record");
+      }
+
+      const result = await response.json();
+      setClockRecords(prev =>
+        prev.map(record => (record.id === id ? normalizeId(result) : record))
+      );
+      return result;
+    } catch (error) {
+      console.error("Error updating clock record:", error);
+      throw error;
+    }
+  };
+
+  // Load initial data
+  useEffect(() => {
+    if (user) {
+      fetchData("employees", setEmployees, initialEmployees);
+      fetchData("departments", setDepartments, initialDepartments);
+      fetchData("designations", setDesignations, initialDesignations);
+      fetchData("announcements", setAnnouncements, initialAnnouncements);
+      fetchData("chat", setChatMessages, initialChatMessages);
+      fetchData("tasks", setTasks, initialTasks);
+      fetchData("clients", setClients, initialClients);
+      fetchData("attendance", setClockRecords, initialClockRecords);
+      fetchData("absences", setAbsences, initialAbsences);
+    }
+  }, [user, fetchData]);
+
+  const value: DataContextType = {
+    employees,
+    departments,
+    designations,
+    announcements,
+    chatMessages,
+    tasks,
+    clients,
+    clockRecords,
+    absences,
+    isClockActive,
+    setIsClockActive,
+    toggleClock,
+    fetchData,
+    addClockRecord,
+    updateClockRecord,
+    setClockRecords,
+    initialClockRecords,
+  };
+
+  return (
+    <DataContext.Provider value={value}>
+      {children}
+    </DataContext.Provider>
+  );
+};
+
+export const useData = () => {
+  const context = useContext(DataContext);
+  if (context === undefined) {
+    throw new Error("useData must be used within a DataProvider");
+  }
+  return context;
+};
