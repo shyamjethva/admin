@@ -159,7 +159,7 @@ export function AuthProvider({
 
 
   const logout = async () => {
-    console.log("🚪 Logging out...");
+    console.log(" doorway Logging out...");
     authService.logout();
     setUser(null);
     // ✅ Clear all possible token storage keys
@@ -170,7 +170,6 @@ export function AuthProvider({
     setShowLogin(true);
     console.log("✅ Logged out successfully");
   };
-
 
 
   const updateUser = async (data: Partial<User>) => {
@@ -343,4 +342,4 @@ export function useAuth() {
 }
 
 
-// chatgpt code 
+// chatgpt code

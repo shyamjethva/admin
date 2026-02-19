@@ -1,10 +1,10 @@
 import * as React from 'react';
-import { Bell, Search, User, LogOut, Settings, Clock, PlayCircle, StopCircle } from 'lucide-react';
+import { Bell, Search, User, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useData } from '../context/DataContext';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { NotificationDropdown } from './NotificationDropdown';
+import { useData } from '../context/DataContext';
 
 interface HeaderProps {
   onProfileClick: () => void;
@@ -19,7 +19,17 @@ export function Header({ onProfileClick, onSettingsClick, onNavigate }: HeaderPr
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4 relative z-50">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between">
+        <div className="flex-1 flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="w-64 pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
 
         <div className="flex items-center gap-4 border-l border-gray-200 pl-6">
           <NotificationDropdown onNavigate={onNavigate} />
