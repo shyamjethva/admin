@@ -271,10 +271,11 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { attendanceService } from '../../services/attendanceservices';
 import { Modal } from '../Modal';
 
 export function TeamAttendance() {
-  const { attendance, addAttendance, updateAttendance, deleteAttendance, employees, fetchData } = useData();
+  const { attendance, addAttendance, updateAttendance, deleteAttendance, employees, fetchData, markAbsentEmployees } = useData();
 
   console.log('🔄 TeamAttendance - Component rendered');
   console.log('🔄 TeamAttendance - employees:', employees);
@@ -305,9 +306,18 @@ export function TeamAttendance() {
   const getId = (r: any) => r?.id || r?._id;
 
   const getEmployeeName = (r: any) => {
-    const name = r?.employeeName || (typeof r?.employeeId === 'object' ? r.employeeId?.name : '');
+    let name = r?.employeeName || '';
+
+    if (!name && r?.employeeId) {
+      if (typeof r.employeeId === 'object') {
+        name = r.employeeId.name || r.employeeId._id || r.employeeId.email || '';
+      } else {
+        name = r.employeeId;
+      }
+    }
+
     console.log('🔄 TeamAttendance - getEmployeeName:', { record: r, name });
-    return name;
+    return name || 'Unknown Employee';
   };
 
   // Fetch attendance data when component mounts
@@ -330,8 +340,13 @@ export function TeamAttendance() {
   // Show ALL employees with their attendance for selected date
   const getAttendanceForEmployee = (empId: string) => {
     return attendance.find((a: any) => {
-      const attendanceEmpId = a.employeeId?.id || a.employeeId?._id || a.employeeId;
-      return attendanceEmpId === empId && a.date === selectedDate;
+      let attendanceEmpId;
+      if (typeof a.employeeId === 'object' && a.employeeId) {
+        attendanceEmpId = a.employeeId._id || a.employeeId.id || a.employeeId;
+      } else {
+        attendanceEmpId = a.employeeId;
+      }
+      return String(attendanceEmpId) === String(empId) && a.date === selectedDate;
     });
   };
 
@@ -354,9 +369,17 @@ export function TeamAttendance() {
 
   const handleEdit = (row: any) => {
     setEditingAttendance(row);
+    let employeeIdValue;
+    if (typeof row.employeeId === 'object' && row.employeeId) {
+      employeeIdValue = String(row.employeeId._id || row.employeeId.id || row.employeeId);
+    } else {
+      employeeIdValue = String(row.employeeId);
+    }
+    const employeeNameValue = getEmployeeName(row);
+
     setFormData({
-      employeeId: typeof row.employeeId === 'object' ? row.employeeId?._id : row.employeeId,
-      employeeName: getEmployeeName(row),
+      employeeId: employeeIdValue,
+      employeeName: employeeNameValue,
       date: row.date || selectedDate,
       checkIn: row.checkIn || '',
       checkOut: row.checkOut || '',
@@ -424,9 +447,12 @@ export function TeamAttendance() {
   };
 
   const handleEmployeeChange = (employeeId: string) => {
-    const employee = employees.find((e: any) => e.id === employeeId || e._id === employeeId);
+    const employee = employees.find((e: any) => String(e.id) === String(employeeId) || String(e._id) === String(employeeId));
     if (employee) {
-      setFormData({ ...formData, employeeId, employeeName: employee.name });
+      const employeeName = typeof employee.name === 'string' ? employee.name :
+        typeof employee.name === 'object' ? employee.name.name || employee.name._id || 'Unknown Employee' :
+          'Unknown Employee';
+      setFormData({ ...formData, employeeId: String(employeeId), employeeName });
     }
   };
 
@@ -440,11 +466,14 @@ export function TeamAttendance() {
     let errorCount = 0;
 
     for (const emp of employees) {
-      const empId = emp.id || emp._id;
+      const empId = String(emp.id || emp._id);
+      const empName = typeof emp.name === 'string' ? emp.name :
+        typeof emp.name === 'object' ? emp.name.name || emp.name._id || 'Unknown Employee' :
+          'Unknown Employee';
       try {
         await addAttendance({
           employeeId: empId,
-          employeeName: emp.name,
+          employeeName: empName,
           date: bulkFormData.date,
           checkIn: bulkFormData.checkIn,
           checkOut: bulkFormData.checkOut,
@@ -454,13 +483,25 @@ export function TeamAttendance() {
         successCount++;
       } catch (err) {
         errorCount++;
-        console.error(`Error adding attendance for ${emp.name}:`, err);
+        console.error(`Error adding attendance for ${empName}:`, err);
       }
     }
 
     setIsSubmitting(false);
     setShowBulkModal(false);
     alert(`Attendance marked for ${successCount} employees${errorCount > 0 ? `. ${errorCount} failed.` : '.'}`);
+  };
+
+  // Function to mark absent employees for the selected date
+  const handleMarkAbsentEmployees = async () => {
+    if (window.confirm(`Are you sure you want to mark all employees without attendance as absent for ${selectedDate}?`)) {
+      try {
+        await markAbsentEmployees(selectedDate);
+      } catch (error) {
+        console.error('Error marking absent employees:', error);
+        alert('Failed to mark absent employees. Please try again.');
+      }
+    }
   };
 
   return (
@@ -485,6 +526,13 @@ export function TeamAttendance() {
             <Plus size={20} />
             Mark All Employees
           </button>
+          <button
+            onClick={handleMarkAbsentEmployees}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+          >
+            <Plus size={20} />
+            Mark Absent
+          </button>
         </div>
       </div>
 
@@ -506,7 +554,7 @@ export function TeamAttendance() {
               <span className="text-gray-600">Present: </span>
               <span className="font-medium text-green-600">
                 {employees.filter((emp: any) => {
-                  const att = getAttendanceForEmployee(emp.id || emp._id);
+                  const att = getAttendanceForEmployee(String(emp.id || emp._id));
                   return att?.status === 'present';
                 }).length}
               </span>
@@ -515,7 +563,7 @@ export function TeamAttendance() {
               <span className="text-gray-600">Late: </span>
               <span className="font-medium text-yellow-600">
                 {employees.filter((emp: any) => {
-                  const att = getAttendanceForEmployee(emp.id || emp._id);
+                  const att = getAttendanceForEmployee(String(emp.id || emp._id));
                   return att?.status === 'late';
                 }).length}
               </span>
@@ -524,7 +572,7 @@ export function TeamAttendance() {
               <span className="text-gray-600">Absent: </span>
               <span className="font-medium text-red-600">
                 {employees.filter((emp: any) => {
-                  const att = getAttendanceForEmployee(emp.id || emp._id);
+                  const att = getAttendanceForEmployee(String(emp.id || emp._id));
                   return att?.status === 'absent';
                 }).length}
               </span>
@@ -532,7 +580,7 @@ export function TeamAttendance() {
             <div className="text-sm">
               <span className="text-gray-600">Not Marked: </span>
               <span className="font-medium text-gray-600">
-                {employees.filter((emp: any) => !getAttendanceForEmployee(emp.id || emp._id)).length}
+                {employees.filter((emp: any) => !getAttendanceForEmployee(String(emp.id || emp._id))).length}
               </span>
             </div>
           </div>
@@ -555,16 +603,31 @@ export function TeamAttendance() {
             <tbody className="bg-white divide-y divide-gray-200">
               {/* Show ALL employees with their attendance for selected date */}
               {employees.map((emp: any) => {
-                const empId = emp.id || emp._id;
+                const empId = String(emp.id || emp._id);
                 const attRecord = attendance.find((a: any) => {
-                  const aId = a.employeeId?.id || a.employeeId?._id || a.employeeId;
-                  return aId === empId && a.date === selectedDate;
+                  let aId;
+                  if (typeof a.employeeId === 'object' && a.employeeId) {
+                    aId = a.employeeId._id || a.employeeId.id || a.employeeId;
+                  } else {
+                    aId = a.employeeId;
+                  }
+                  return String(aId) === String(empId) && a.date === selectedDate;
                 });
                 return (
                   <tr key={empId} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{emp.name}</div>
-                      <div className="text-sm text-gray-500">{emp.department?.name || emp.departmentId?.name || '-'}</div>
+                      <div className="font-medium text-gray-900">{
+                        typeof emp.name === 'string' ? emp.name :
+                          typeof emp.name === 'object' && emp.name ?
+                            (emp.name as any).name || (emp.name as any)._id || (emp.name as any).email || 'Unknown Employee' :
+                            'Unknown Employee'
+                      }</div>
+                      <div className="text-sm text-gray-500">{
+                        typeof emp.department === 'object' && emp.department?.name ? emp.department.name :
+                          typeof emp.departmentId === 'object' && emp.departmentId?.name ? emp.departmentId.name :
+                            typeof emp.department === 'string' ? emp.department :
+                              typeof emp.departmentId === 'string' ? emp.departmentId : '-'
+                      }</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-gray-600">
                       {attRecord?.checkIn || '-'}
@@ -603,9 +666,12 @@ export function TeamAttendance() {
                               handleEdit(attRecord);
                             } else {
                               // Mark attendance for this employee
+                              const empName = typeof emp.name === 'string' ? emp.name :
+                                typeof emp.name === 'object' ? emp.name.name || emp.name._id || 'Unknown Employee' :
+                                  'Unknown Employee';
                               setFormData({
-                                employeeId: empId,
-                                employeeName: emp.name,
+                                employeeId: String(empId),
+                                employeeName: empName,
                                 date: selectedDate,
                                 checkIn: '09:00',
                                 checkOut: '18:00',
@@ -647,11 +713,38 @@ export function TeamAttendance() {
                 required
               >
                 <option value="">Select Employee</option>
-                {employees.map((emp: any) => (
-                  <option key={emp.id || emp._id} value={emp.id || emp._id}>
-                    {emp.name}
-                  </option>
-                ))}
+                {employees.map((emp: any) => {
+                  // Handle different employee data structures
+                  const employeeId = emp.id || emp._id || (emp as any).employeeId;
+                  let employeeName = 'Unknown Employee';
+                  if (typeof emp.name === 'string') {
+                    employeeName = emp.name;
+                  } else if (typeof emp.name === 'object' && emp.name) {
+                    employeeName = emp.name.name || emp.name._id || emp.name.email || 'Unknown Employee';
+                  } else if (emp.fullName) {
+                    employeeName = emp.fullName;
+                  } else if (emp.displayName) {
+                    employeeName = emp.displayName;
+                  }
+
+                  let employeeEmail = '';
+                  if (typeof emp.email === 'string') {
+                    employeeEmail = emp.email;
+                  } else if (typeof emp.email === 'object' && emp.email) {
+                    employeeEmail = emp.email.email || emp.email._id || '';
+                  } else if (emp.email) {
+                    employeeEmail = emp.email;
+                  }
+
+                  // Only show employees with valid IDs
+                  if (!employeeId) return null;
+
+                  return (
+                    <option key={employeeId} value={employeeId}>
+                      {employeeName}{employeeEmail ? ` (${employeeEmail})` : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 

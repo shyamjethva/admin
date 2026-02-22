@@ -1,11 +1,22 @@
 import { Router } from "express";
-import { protect } from "../middleware/authmiddleware.js";
-import { allowRoles } from "../middleware/rolemiddleware.js";
-import { dashboardStats } from "../controllers/reportcontroller.js";
+import { protect, authorize } from "../middleware/authmiddleware.js";
+import { createReport, getReports, getReportById, deleteReport } from "../controllers/reportcontroller.js";
 
 const router = Router();
 
+// Apply authentication middleware to all routes
 router.use(protect);
-router.get("/dashboard", allowRoles("admin", "hr"), dashboardStats);
+
+// Create a new report (POST /api/reports)
+router.post('/', createReport);
+
+// Get all reports (GET /api/reports)
+router.get('/', getReports);
+
+// Get report by ID (GET /api/reports/:id)
+router.get('/:id', getReportById);
+
+// Delete report (DELETE /api/reports/:id)
+router.delete('/:id', authorize('admin', 'hr'), deleteReport);
 
 export default router;

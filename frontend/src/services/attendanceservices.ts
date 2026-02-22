@@ -118,6 +118,11 @@ export const attendanceService = {
         const res = await api.delete(`/attendance/${id}`);
         return res.data;
     },
+
+    markAbsentEmployees: async (date?: string) => {
+        const res = await api.post('/attendance/mark-absent', { date });
+        return res.data;
+    },
 };
 
 export default attendanceService;

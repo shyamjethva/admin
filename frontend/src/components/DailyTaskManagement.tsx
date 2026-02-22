@@ -322,42 +322,41 @@ export function DailyTaskManagement() {
                 <button
                   onClick={() => handlePlay(task.id)}
                   disabled={!canPlay}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${canPlay
-                    ? 'bg-green-500 hover:bg-green-600 text-white shadow-sm hover:shadow-md'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  className={`p-2 rounded-lg transition-all ${canPlay
+                    ? 'text-gray-600 hover:text-green-600 hover:bg-green-50'
+                    : 'text-gray-300 cursor-not-allowed'
                     }`}
                   title={!canPlay && activeTask ? 'Another task is currently running' : 'Start task'}
                 >
-                  <Play size={16} />
-                  <span>Play</span>
+                  <Play size={18} />
                 </button>
               )}
 
               {isActive && (
                 <button
                   onClick={() => handlePause(task.id)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-yellow-500 hover:bg-yellow-600 text-white shadow-sm hover:shadow-md transition-all"
+                  className="p-2 text-gray-600 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all"
+                  title="Pause task"
                 >
-                  <Pause size={16} />
-                  <span>Pause</span>
+                  <Pause size={18} />
                 </button>
               )}
 
               <button
                 onClick={() => handleComplete(task.id)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-blue-500 hover:bg-blue-600 text-white shadow-sm hover:shadow-md transition-all"
+                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                title="Complete task"
               >
-                <CheckCircle2 size={16} />
-                <span>Complete</span>
+                <CheckCircle2 size={18} />
               </button>
 
               {canOverride && isActive && (
                 <button
                   onClick={() => handleAdminStop(task.id)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg font-medium bg-red-500 hover:bg-red-600 text-white shadow-sm hover:shadow-md transition-all ml-auto"
+                  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                   title="Admin: Force stop this task"
                 >
-                  <StopCircle size={16} />
+                  <StopCircle size={18} />
                 </button>
               )}
             </>

@@ -63,6 +63,7 @@ type Employee = {
 
 const getTaskId = (t: any) => (t?._id || t?.id) as string;
 
+// Add the TaskModal rendering inside the component
 export function WeeklyWorkPlan() {
   const { user } = useAuth();
   // Removed excessive logging that was causing performance issues
@@ -366,7 +367,7 @@ export function WeeklyWorkPlan() {
                 <div className="absolute top-4 right-4 flex gap-2">
                   <button
                     onClick={() => setEditingTask(task)}
-                    className="text-blue-600 hover:text-blue-700 p-1.5 hover:bg-blue-50 rounded"
+                    className="text-blue-600 hover:text-blue-700 p-1.5 hover:bg-blue-50 rounded transition-colors duration-200"
                   >
                     <Edit2 size={16} />
                   </button>
@@ -403,29 +404,30 @@ export function WeeklyWorkPlan() {
                   <button
                     onClick={() => handlePlay(id)}
                     disabled={task.status === 'completed'}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${task.status === 'completed'
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-green-500 hover:bg-green-600 text-white shadow-sm hover:shadow-md'
+                    className={`p-2 rounded-lg transition-colors ${task.status === 'completed'
+                      ? 'text-gray-300 cursor-not-allowed'
+                      : 'text-gray-600 hover:text-green-600 hover:bg-green-50'
                       }`}
+                    title="Start task"
                   >
-                    <Play size={16} className="fill-current" />
-                    Play
+                    <Play size={18} />
                   </button>
                 ) : (
                   <button
                     onClick={() => handlePause(id)}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors shadow-sm hover:shadow-md"
+                    className="p-2 text-gray-600 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
+                    title="Pause task"
                   >
-                    <Pause size={16} />
-                    Pause
+                    <Pause size={18} />
                   </button>
                 )}
 
                 <button
                   onClick={() => toggleTaskStatus(id)}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="Toggle task status"
                 >
-                  {task.status === 'completed' ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                  {task.status === 'completed' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                 </button>
               </div>
             </div>
@@ -540,11 +542,21 @@ function TaskModal({
                 required
               >
                 <option value="">Select employee</option>
-                {employees.map((emp) => (
-                  <option key={emp._id || emp.id} value={emp._id || emp.id}>
-                    {emp.name}
-                  </option>
-                ))}
+                {employees.map((emp: any) => {
+                  // Handle different employee data structures
+                  const employeeId = emp._id || emp.id || (emp as any).employeeId;
+                  const employeeName = emp.name || (emp as any).fullName || (emp as any).displayName || 'Unknown Employee';
+                  const employeeEmail = emp.email || (emp as any).email || '';
+
+                  // Only show employees with valid IDs
+                  if (!employeeId) return null;
+
+                  return (
+                    <option key={employeeId} value={employeeId}>
+                      {employeeName}{employeeEmail ? ` (${employeeEmail})` : ''})
+                    </option>
+                  );
+                })}
               </select>
             ) : (
               // fallback (if employees not available in context yet)

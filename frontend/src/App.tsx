@@ -8,6 +8,7 @@ import { Designations } from './components/employee/Designations';
 import { TeamAttendance } from './components/attendance/TeamAttendance';
 import { AttendanceReport } from './components/attendance/AttendanceReport';
 import { Shifts } from './components/attendance/Shifts';
+import { EmployeeClockRecords } from './components/attendance/EmployeeClockRecords';
 import { LeaveRequests } from './components/leave/LeaveRequests';
 import { LeaveTypes } from './components/leave/LeaveTypes';
 import { EmployeeLeaveTypes } from './components/leave/EmployeeLeaveTypes';
@@ -19,6 +20,7 @@ import { PayrollProcessing } from './components/payroll/PayrollProcessing';
 import { SalaryStructure } from './components/payroll/SalaryStructure';
 import { Announcements } from './components/announcements/Announcements';
 import { Reports } from './components/reports/Reports';
+import { ReportTest } from './components/ReportTest';
 import { HelpSupport } from './components/HelpSupport';
 import { WhatChat } from './components/WhatChat';
 import { SimpleClockInOut } from './components/SimpleClockInOut';
@@ -61,6 +63,8 @@ function AppContent() {
         return <AttendanceReport />;
       case 'shifts':
         return <Shifts />;
+      case 'employee-clock-records':
+        return <EmployeeClockRecords />;
       case 'clock-in-out':
         return <SimpleClockInOut />;
       case 'leave-requests':
@@ -93,6 +97,8 @@ function AppContent() {
         return <Birthdays />;
       case 'reports':
         return <Reports />;
+      case 'report-test':
+        return <ReportTest />;
       case 'help-support':
         return <HelpSupport />;
       case 'profile':

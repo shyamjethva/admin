@@ -16,6 +16,9 @@ export function TaskManagement() {
 	// State for view modal
 	const [viewingTask, setViewingTask] = useState<any>(null);
 	const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+	// State for edit modal
+	const [editingTask, setEditingTask] = useState<any>(null);
+	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
 	// State for add task modal
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -121,6 +124,58 @@ export function TaskManagement() {
 		}));
 	};
 
+	// Handle edit task
+	const handleEditTask = (task: any) => {
+		setEditingTask(task);
+		setIsEditModalOpen(true);
+	};
+
+	// Handle save edited task
+	const handleSaveEditTask = async (updatedTask: any) => {
+		try {
+			await updateTask(editingTask._id || editingTask.id, updatedTask);
+			addNotification({
+				type: 'task',
+				title: 'Task Updated',
+				message: `Task "${updatedTask.title}" has been updated successfully`,
+				priority: 'medium'
+			});
+			setIsEditModalOpen(false);
+			setEditingTask(null);
+		} catch (error) {
+			console.error('Error updating task:', error);
+			addNotification({
+				type: 'task',
+				title: 'Update Failed',
+				message: 'Failed to update task. Please try again.',
+				priority: 'high'
+			});
+		}
+	};
+
+	// Handle delete task
+	const handleDeleteTask = async (task: any) => {
+		if (window.confirm('Are you sure you want to delete this task?')) {
+			try {
+				await deleteTask(task._id || task.id);
+				addNotification({
+					type: 'task',
+					title: 'Task Deleted',
+					message: `Task "${task.title}" has been deleted successfully`,
+					priority: 'high'
+				});
+			} catch (error) {
+				console.error('Error deleting task:', error);
+				addNotification({
+					type: 'task',
+					title: 'Delete Failed',
+					message: 'Failed to delete task. Please try again.',
+					priority: 'high'
+				});
+			}
+		}
+	};
+
 	// Handle add task submission
 	const handleAddTask = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -140,9 +195,8 @@ export function TaskManagement() {
 				...newTask,
 				timeSpent: 0,
 				isRunning: false,
-				timerStartTime: null,
-				assignedBy: user?.id, // Add the assigner ID
-				assignedByName: user?.name // Add the assigner name
+				timerStartTime: null
+				// assignedBy will be set automatically by the backend
 			};
 
 			await addTask(taskData);
@@ -420,6 +474,9 @@ export function TaskManagement() {
 													<Clock size={14} />
 													<span>{formatTime(currentTimeSpent)}</span>
 												</div>
+												{task.assignedTo && (
+													<span>Assigned to: {getAssignedToName(task.assignedTo, employees)}</span>
+												)}
 												{task.assignedByName && (
 													<span>Assigned by: {task.assignedByName}</span>
 												)}
@@ -428,10 +485,10 @@ export function TaskManagement() {
 										<div className="flex gap-2">
 											<button
 												onClick={() => handleViewTask(task)}
-												className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-1"
+												className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+												title="View Task"
 											>
-												<Eye size={16} />
-												View
+												<Eye size={18} />
 											</button>
 
 											{canStartTimer && (
@@ -461,13 +518,19 @@ export function TaskManagement() {
 
 											{(user?.role === 'admin' || user?.role === 'hr') && (
 												<>
-													<button className="px-3 py-1 bg-amber-500 text-white rounded hover:bg-amber-600 flex items-center gap-1">
-														<Edit size={16} />
-														Edit
+													<button
+														onClick={() => handleEditTask(task)}
+														className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+														title="Edit Task"
+													>
+														<Edit size={18} />
 													</button>
-													<button className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-1">
-														<Trash2 size={16} />
-														Delete
+													<button
+														onClick={() => handleDeleteTask(task)}
+														className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+														title="Delete Task"
+													>
+														<Trash2 size={18} />
 													</button>
 												</>
 											)}
@@ -522,11 +585,21 @@ export function TaskManagement() {
 										required
 									>
 										<option value="">Select employee</option>
-										{employees?.map((employee: any) => (
-											<option key={employee._id || employee.id} value={employee._id || employee.id}>
-												{employee.name}
-											</option>
-										))}
+										{employees?.map((employee: any) => {
+											// Handle different employee data structures
+											const employeeId = employee._id || employee.id || employee.employeeId;
+											const employeeName = employee.name || employee.fullName || employee.displayName || 'Unknown Employee';
+											const employeeEmail = employee.email || '';
+
+											// Only show employees with valid IDs
+											if (!employeeId) return null;
+
+											return (
+												<option key={employeeId} value={employeeId}>
+													{employeeName}{employeeEmail ? ` (${employeeEmail})` : ''})
+												</option>
+											);
+										})}
 									</select>
 								</div>
 
@@ -678,10 +751,7 @@ export function TaskManagement() {
 											Assigned To
 										</span>
 										<div className="text-gray-900 font-semibold">
-											{typeof viewingTask.assignedTo === 'object' ?
-												viewingTask.assignedTo.name :
-												viewingTask.assignedToName || 'Unknown'
-											}
+											{getAssignedToName(viewingTask.assignedTo, employees)}
 										</div>
 									</div>
 
@@ -690,7 +760,7 @@ export function TaskManagement() {
 											Assigned By
 										</span>
 										<div className="text-gray-900 font-semibold">
-											{viewingTask.assignedByName || viewingTask.assignedBy || 'System'}
+											{getAssignedByName(viewingTask.assignedBy, viewingTask.assignedByName)}
 										</div>
 									</div>
 
@@ -771,6 +841,212 @@ export function TaskManagement() {
 					</div>
 				</div>
 			)}
+
+			{/* Edit Task Modal */}
+			{isEditModalOpen && editingTask && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+					<div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+						<div className="p-6">
+							<div className="flex justify-between items-center mb-6">
+								<h3 className="text-xl font-bold text-gray-900">Edit Task</h3>
+								<button
+									onClick={() => {
+										setIsEditModalOpen(false);
+										setEditingTask(null);
+									}}
+									className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+								>
+									<X size={24} />
+								</button>
+							</div>
+
+							<form onSubmit={(e) => {
+								e.preventDefault();
+								handleSaveEditTask({
+									title: (e.target as any).title.value,
+									description: (e.target as any).description.value,
+									assignedTo: (e.target as any).assignedTo.value,
+									status: (e.target as any).status.value,
+									priority: (e.target as any).priority.value,
+									dueDate: (e.target as any).dueDate.value,
+									category: (e.target as any).category.value
+								});
+							}} className="space-y-6">
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+									<input
+										type="text"
+										name="title"
+										defaultValue={editingTask.title}
+										className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+										required
+									/>
+								</div>
+
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+									<textarea
+										name="description"
+										defaultValue={editingTask.description || ''}
+										className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+										rows={3}
+										required
+									/>
+								</div>
+
+								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+									<div>
+										<label className="block text-sm font-medium text-gray-700 mb-2">Assigned To</label>
+										<select
+											name="assignedTo"
+											defaultValue={typeof editingTask.assignedTo === 'object' ? editingTask.assignedTo._id || editingTask.assignedTo.id : editingTask.assignedTo}
+											className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+											required
+										>
+											<option value="">Select Employee</option>
+											{employees.map((emp: any) => {
+												const employeeId = emp._id || emp.id || (emp as any).employeeId;
+												const employeeName = emp.name || (emp as any).fullName || (emp as any).displayName || 'Unknown Employee';
+
+												if (!employeeId) return null;
+
+												return (
+													<option key={employeeId} value={employeeId}>
+														{employeeName}{emp.email ? ` (${emp.email})` : ''}
+													</option>
+												);
+											})}
+										</select>
+									</div>
+
+									<div>
+										<label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+										<select
+											name="status"
+											defaultValue={editingTask.status}
+											className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+											required
+										>
+											<option value="pending">Pending</option>
+											<option value="in-progress">In Progress</option>
+											<option value="completed">Completed</option>
+										</select>
+									</div>
+
+									<div>
+										<label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+										<select
+											name="priority"
+											defaultValue={editingTask.priority}
+											className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+											required
+										>
+											<option value="low">Low</option>
+											<option value="medium">Medium</option>
+											<option value="high">High</option>
+										</select>
+									</div>
+
+									<div>
+										<label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+										<input
+											type="date"
+											name="dueDate"
+											defaultValue={editingTask.dueDate ? new Date(editingTask.dueDate).toISOString().split('T')[0] : ''}
+											className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+										/>
+									</div>
+								</div>
+
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+									<input
+										type="text"
+										name="category"
+										defaultValue={editingTask.category || 'General'}
+										className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+										required
+									/>
+								</div>
+
+								<div className="flex justify-end gap-3 pt-4">
+									<button
+										type="button"
+										onClick={() => {
+											setIsEditModalOpen(false);
+											setEditingTask(null);
+										}}
+										className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+									>
+										Cancel
+									</button>
+									<button
+										type="submit"
+										className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+									>
+										Save Changes
+									</button>
+								</div>
+							</form>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
-}
+};
+
+// Helper function to get assigned to name
+const getAssignedToName = (assignedTo: any, employees: any[] = []): string => {
+	if (!assignedTo) return 'Unassigned';
+
+	// If it's an object (populated from MongoDB)
+	if (typeof assignedTo === 'object' && assignedTo !== null) {
+		return assignedTo.name || assignedTo.email || 'Unknown Employee';
+	}
+
+	// If it's a string ID, look up the employee name
+	const employeeId = assignedTo.toString().trim();
+	if (!employeeId) return 'Unassigned';
+
+	// Find employee by ID in the employees array
+	const employee = employees.find(emp =>
+		(emp._id && emp._id.toString() === employeeId) ||
+		(emp.id && emp.id.toString() === employeeId) ||
+		(emp.employeeId && emp.employeeId.toString() === employeeId)
+	);
+
+	if (employee) {
+		return employee.name || employee.email || `Employee (${employeeId})`;
+	}
+
+	// If not found, return the ID
+	return `Employee ID: ${employeeId}`;
+};
+
+// Helper function to get assigned by name
+const getAssignedByName = (assignedBy: any, assignedByName: string): string => {
+	// If we have the name directly, use it
+	if (assignedByName) return assignedByName;
+
+	// If assignedBy is an object (populated), extract name
+	if (assignedBy && typeof assignedBy === 'object') {
+		return assignedBy.name || assignedBy.displayName || assignedBy.fullName || 'User';
+	}
+
+	// If assignedBy is a string but we don't have the name, try to find in employees
+	if (assignedBy && typeof assignedBy === 'string' && assignedBy !== 'System') {
+		// Look for the user who assigned this task
+		const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+		if (currentUser.id === assignedBy) {
+			return currentUser.name || 'Current User';
+		}
+
+		// If not current user, return generic user ID
+		return 'Admin';
+	}
+
+	return 'System';
+};
+
+export default TaskManagement;

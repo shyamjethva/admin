@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "nodemon server.js",
-    "seed": "node src/scripts/seedUsers.js"
+    "seed": "node src/scripts/seedUsers.js",
+    "mark-absent": "node src/scripts/autoMarkAbsent.js"
   },
   "keywords": [],
   "author": "",
@@ -19,7 +20,8 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.1.5"
+    "mongoose": "^9.1.5",
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"

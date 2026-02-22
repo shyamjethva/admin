@@ -341,5 +341,3 @@ export function useAuth() {
   return context;
 }
 
-
-// chatgpt code

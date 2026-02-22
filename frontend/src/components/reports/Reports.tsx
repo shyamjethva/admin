@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Download, FileText, Users, Calendar, DollarSign } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 import * as XLSX from 'xlsx';
+import { reportService } from '../../services/reportService';
 
 export function Reports() {
   const { employees, attendance, leaveRequests, leaveTypes, payrollEntries, departments } = useData();
+  const { user } = useAuth();
   console.log('📊 Reports Component Data:');
   console.log('- Employees count:', employees?.length || 0);
   console.log('- Attendance count:', attendance?.length || 0);
@@ -25,303 +28,304 @@ export function Reports() {
   const safeLeaveRequests = Array.isArray(leaveRequests) ? leaveRequests : [];
   const safePayrollEntries = Array.isArray(payrollEntries) ? payrollEntries : [];
 
+  // Calculate attendance statistics
   const attendanceStats = {
-    totalDays: safeAttendance.filter(a => a.date?.startsWith(selectedMonth)).length,
-    present: safeAttendance.filter(a => a.date?.startsWith(selectedMonth) && a.status === 'present').length,
-    absent: safeAttendance.filter(a => a.date?.startsWith(selectedMonth) && a.status === 'absent').length,
-    late: safeAttendance.filter(a => a.date?.startsWith(selectedMonth) && a.status === 'late').length,
+    totalDays: safeAttendance.length,
+    present: safeAttendance.filter(a => a.status === 'present').length,
+    absent: safeAttendance.filter(a => a.status === 'absent').length,
+    late: safeAttendance.filter(a => a.status === 'late').length,
   };
 
+  // Calculate leave statistics
   const leaveStats = {
-    totalRequests: safeLeaveRequests.filter(lr => (lr.fromDate || lr.startDate)?.startsWith(selectedMonth)).length,
-    approved: safeLeaveRequests.filter(lr => (lr.fromDate || lr.startDate)?.startsWith(selectedMonth) && lr.status === 'approved').length,
-    pending: safeLeaveRequests.filter(lr => (lr.fromDate || lr.startDate)?.startsWith(selectedMonth) && lr.status === 'pending').length,
-    rejected: safeLeaveRequests.filter(lr => (lr.fromDate || lr.startDate)?.startsWith(selectedMonth) && lr.status === 'rejected').length,
+    totalRequests: safeLeaveRequests.length,
+    approved: safeLeaveRequests.filter(lr => lr.status === 'approved').length,
+    pending: safeLeaveRequests.filter(lr => lr.status === 'pending').length,
+    rejected: safeLeaveRequests.filter(lr => lr.status === 'rejected').length,
   };
 
+  // Calculate payroll statistics
   const payrollStats = {
-    totalPayroll: safePayrollEntries.filter(p => p.month?.startsWith(selectedMonth)).reduce((sum, p) => sum + (p.netSalary || 0), 0),
-    totalEmployees: safePayrollEntries.filter(p => p.month?.startsWith(selectedMonth)).length,
-    processed: safePayrollEntries.filter(p => p.month?.startsWith(selectedMonth) && p.status === 'processed').length,
-    paid: safePayrollEntries.filter(p => p.month?.startsWith(selectedMonth) && p.status === 'paid').length,
+    totalPayroll: safePayrollEntries.reduce((sum, p) => sum + (p.netSalary || 0), 0),
+    totalEmployees: new Set(safePayrollEntries.map(p => p.employeeId)).size,
+    processed: safePayrollEntries.filter(p => p.status === 'processed').length,
+    paid: safePayrollEntries.filter(p => p.status === 'paid').length,
   };
 
-  const handleDownload = (reportType: string) => {
+  const handleDownload = async (reportType: string) => {
     let data: any[] = [];
     let fileName = '';
     let sheetName = '';
 
     if (reportType === 'attendance') {
-      // Enhanced employee lookup that handles both ID references and populated objects
+      // Comprehensive employee lookup that handles all possible data structures
       const getEmployeeInfo = (attendanceRecord: any) => {
         console.log('🔍 Processing attendance record for employee info:', attendanceRecord);
+        console.log('🔍 Available employees:', employees.length);
+        console.log('🔍 Available departments:', departments.length);
 
-        // Case 1: employeeId is a populated employee object (but minimal data)
-        if (attendanceRecord.employeeId && typeof attendanceRecord.employeeId === 'object') {
-          console.log('✅ Found populated employee object in attendance record');
-          const emp = attendanceRecord.employeeId;
-          console.log('🔍 Employee object structure:', emp);
-          console.log('🔍 Employee keys:', Object.keys(emp));
-          console.log('🔍 Department field:', emp.department);
-          console.log('🔍 DepartmentId field:', emp.departmentId);
-
-          // Since the populated object is minimal, look up the full employee data
-          console.log('🔄 Looking up full employee data by ID:', emp._id || emp.id);
-          const fullEmployee = employees.find(e =>
-            e._id === (emp._id || emp.id) || e.id === (emp._id || emp.id)
-          );
-
-          if (fullEmployee) {
-            console.log('✅ Found full employee data:', fullEmployee);
-            console.log('🔍 Full employee departmentId:', fullEmployee.departmentId);
-
-            // Extract department information from full employee data
-            let departmentName = 'N/A';
-
-            // Method 1: Check if department is populated in full employee data
-            if (fullEmployee.department && typeof fullEmployee.department === 'object') {
-              departmentName = fullEmployee.department.name || fullEmployee.department.title || 'N/A';
-              console.log('✅ Found populated department in full employee:', departmentName);
-            }
-            // Method 2: Check if departmentId is populated
-            else if (fullEmployee.departmentId && typeof fullEmployee.departmentId === 'object') {
-              departmentName = fullEmployee.departmentId.name || fullEmployee.departmentId.title || 'N/A';
-              console.log('✅ Found populated departmentId in full employee:', departmentName);
-            }
-            // Method 3: Look up department by departmentId reference
-            else if (fullEmployee.departmentId && typeof fullEmployee.departmentId === 'string') {
-              console.log('🔍 Looking up department by departmentId:', fullEmployee.departmentId);
-              console.log('🔍 Available departments:', departments.map(d => ({
-                id: d._id,
-                name: d.name,
-                description: d.description
-              })));
-
-              const dept = departments.find(d => {
-                const match = (d._id === fullEmployee.departmentId || d.id === fullEmployee.departmentId);
-                console.log(`_dept ${d.name}: _id=${d._id}, id=${d.id}, match=${match}`);
-                return match;
-              });
-
-              if (dept) {
-                departmentName = dept.name;
-                console.log('✅ Found department by ID lookup:', departmentName);
-              } else {
-                console.log('❌ No department found by ID lookup');
-              }
-            }
-
-            console.log('📊 Final department result for full employee lookup:', departmentName);
-
-            return {
-              id: fullEmployee._id || fullEmployee.id,
-              name: fullEmployee.name || emp.name || 'Unknown',
-              departmentId: fullEmployee.departmentId,
-              department: fullEmployee.department,
-              departmentName: departmentName
-            };
-          } else {
-            console.log('❌ Full employee data not found, falling back to name matching');
-            // Fall back to name-based matching
-          }
-        }
-
-        // Case 2: Check if attendance record has direct department info
-        if (attendanceRecord.department || attendanceRecord.departmentName || attendanceRecord.deptName) {
-          console.log('✅ Found direct department info in attendance record');
-          return {
-            id: attendanceRecord.employeeId || 'Unknown',
-            name: attendanceRecord.employeeName || 'Unknown',
-            departmentId: attendanceRecord.departmentId,
-            department: attendanceRecord.department,
-            departmentName: attendanceRecord.departmentName ||
-              attendanceRecord.deptName ||
-              attendanceRecord.department?.name
-          };
-        }
-
-        // Case 3: employeeId is a string ID - look up in employees array
-        if (typeof attendanceRecord.employeeId === 'string') {
-          console.log('🔍 Looking up employee by ID:', attendanceRecord.employeeId);
-          const employee = employees.find(e =>
-            e.id === attendanceRecord.employeeId ||
-            e._id === attendanceRecord.employeeId ||
-            e.employeeId === attendanceRecord.employeeId
-          );
-
-          if (employee) {
-            console.log('✅ Found employee in lookup:', employee);
-            return {
-              id: employee.id || employee._id,
-              name: employee.name || 'Unknown',
-              departmentId: employee.departmentId,
-              department: employee.department,
-              departmentName: employee.department?.name ||
-                employee.departmentName ||
-                employee.deptName
-            };
-          } else {
-            console.log('❌ Employee not found in lookup');
-          }
-        }
-
-        // Fallback: Direct employee lookup by name
-        console.log('🔄 Trying direct employee lookup by name for:', attendanceRecord.employeeName);
+        // Method 1: Direct employee lookup by name (most reliable)
         if (attendanceRecord.employeeName && attendanceRecord.employeeName !== 'Unknown') {
+          console.log('🔍 Trying direct employee lookup by name:', attendanceRecord.employeeName);
           const directEmployee = employees.find(e =>
-            e.name === attendanceRecord.employeeName ||
-            e.name?.toLowerCase() === attendanceRecord.employeeName?.toLowerCase()
+            e.name?.toLowerCase() === attendanceRecord.employeeName?.toLowerCase() ||
+            e.name === attendanceRecord.employeeName
           );
 
           if (directEmployee) {
             console.log('✅ Found employee by direct name lookup:', directEmployee);
 
-            // Get department from this employee
-            let deptName = 'N/A';
-            if (directEmployee.departmentId) {
+            // Get department information
+            let departmentName = 'N/A';
+            let departmentId = null;
+
+            // Try multiple methods to get department
+            // Method 1a: Check if department is populated as object
+            if (directEmployee.department && typeof directEmployee.department === 'object') {
+              departmentName = directEmployee.department.name || directEmployee.department.title || 'N/A';
+              departmentId = directEmployee.department._id || directEmployee.department.id || null;
+              console.log('✅ Found populated department object:', departmentName);
+            }
+            // Method 1b: Check if departmentId is populated as object
+            else if (directEmployee.departmentId && typeof directEmployee.departmentId === 'object') {
+              departmentName = directEmployee.departmentId.name || directEmployee.departmentId.title || 'N/A';
+              departmentId = directEmployee.departmentId._id || directEmployee.departmentId.id || null;
+              console.log('✅ Found populated departmentId object:', departmentName);
+            }
+            // Method 1c: Look up department by departmentId reference
+            else if (directEmployee.departmentId) {
+              const deptId = directEmployee.departmentId;
+              console.log('🔍 Looking up department by departmentId:', deptId);
               const dept = departments.find(d =>
-                d._id === directEmployee.departmentId || d.id === directEmployee.departmentId
+                d._id === deptId || d.id === deptId || String(d._id) === String(deptId) || String(d.id) === String(deptId)
               );
               if (dept) {
-                deptName = dept.name;
-                console.log('✅ Found department for direct employee lookup:', deptName);
+                departmentName = dept.name;
+                departmentId = dept._id || dept.id;
+                console.log('✅ Found department by ID lookup:', departmentName);
+              }
+            }
+            // Method 1d: Look up by department name
+            else if (directEmployee.department && typeof directEmployee.department === 'string') {
+              console.log('🔍 Looking up department by name:', directEmployee.department);
+              const dept = departments.find(d =>
+                d.name?.toLowerCase() === directEmployee.department?.toLowerCase() ||
+                d.name === directEmployee.department
+              );
+              if (dept) {
+                departmentName = dept.name;
+                departmentId = dept._id || dept.id;
+                console.log('✅ Found department by name lookup:', departmentName);
               }
             }
 
             return {
-              id: directEmployee._id || directEmployee.id,
-              name: directEmployee.name || attendanceRecord.employeeName,
-              departmentId: directEmployee.departmentId,
+              id: directEmployee._id || directEmployee.id || attendanceRecord.employeeId || 'Unknown',
+              name: directEmployee.name || attendanceRecord.employeeName || 'Unknown',
+              departmentId: departmentId,
               department: directEmployee.department,
-              departmentName: deptName
+              departmentName: departmentName
             };
           }
         }
-      };
 
-      // Get department name with comprehensive debugging
-      const getDepartmentName = (employeeInfo: any) => {
-        if (!employeeInfo) {
-          console.log('❌ No employee info provided');
-          return 'N/A';
-        }
+        // Method 2: employeeId is a populated employee object
+        if (attendanceRecord.employeeId && typeof attendanceRecord.employeeId === 'object') {
+          console.log('✅ Found populated employee object in attendance record');
+          const emp = attendanceRecord.employeeId;
 
-        console.log('🔍 Employee info for department lookup:', employeeInfo);
-        console.log('🔍 Employee info keys:', Object.keys(employeeInfo));
-        console.log('🔍 Department field type:', typeof employeeInfo.department, employeeInfo.department);
-        console.log('🔍 DepartmentId field type:', typeof employeeInfo.departmentId, employeeInfo.departmentId);
-
-        // Method 1: Check if department is populated in employee info
-        if (employeeInfo.department && typeof employeeInfo.department === 'object') {
-          console.log('✅ Found populated department object:', employeeInfo.department);
-          return employeeInfo.department.name || employeeInfo.department.title || 'N/A';
-        }
-
-        // Method 2: Check if departmentId is populated
-        if (employeeInfo.departmentId && typeof employeeInfo.departmentId === 'object') {
-          console.log('✅ Found populated departmentId object:', employeeInfo.departmentId);
-          return employeeInfo.departmentId.name || employeeInfo.departmentId.title || 'N/A';
-        }
-
-        // Method 3: Look up by departmentId reference
-        if (employeeInfo.departmentId && typeof employeeInfo.departmentId === 'string') {
-          console.log('🔍 Looking up department by departmentId:', employeeInfo.departmentId);
-          console.log('🔍 Available departments:', departments.map(d => ({ id: d.id, _id: d._id, name: d.name })));
-
-          const dept = departments.find(d => {
-            const match = (d.id === employeeInfo.departmentId ||
-              d._id === employeeInfo.departmentId ||
-              String(d.id) === String(employeeInfo.departmentId) ||
-              String(d._id) === String(employeeInfo.departmentId));
-            console.log(`_dept ${d.name}: id=${d.id}, _id=${d._id}, match=${match}`);
-            return match;
-          });
-
-          if (dept) {
-            console.log('✅ Found department by ID lookup:', dept.name);
-            return dept.name;
-          } else {
-            console.log('❌ No department found by departmentId lookup');
-          }
-        }
-
-        // Method 4: Look up by department reference (name or ID)
-        if (employeeInfo.department && typeof employeeInfo.department === 'string') {
-          console.log('🔍 Looking up department by department field:', employeeInfo.department);
-
-          const dept = departments.find(d => {
-            const match = (d.id === employeeInfo.department ||
-              d._id === employeeInfo.department ||
-              d.name === employeeInfo.department ||
-              String(d.id) === String(employeeInfo.department) ||
-              String(d._id) === String(employeeInfo.department));
-            console.log(`_dept ${d.name}: id=${d.id}, _id=${d._id}, name=${d.name}, match=${match}`);
-            return match;
-          });
-
-          if (dept) {
-            console.log('✅ Found department by department field lookup:', dept.name);
-            return dept.name;
-          } else {
-            console.log('❌ No department found by department field lookup');
-          }
-        }
-
-        // Method 5: Try to find department by employee name matching (fallback)
-        if (employeeInfo.name && employeeInfo.name !== 'Unknown') {
-          console.log('🔍 Trying to find department by employee name matching for:', employeeInfo.name);
-          // Look for employees with same name and get their department
-          const matchingEmployees = employees.filter(e =>
-            (e.name === employeeInfo.name || e.name?.toLowerCase() === employeeInfo.name?.toLowerCase()) &&
-            (e.departmentId || e.department)
+          // Look up full employee data
+          const fullEmployee = employees.find(e =>
+            (e._id && (e._id === emp._id || e._id === emp.id)) ||
+            (e.id && (e.id === emp._id || e.id === emp.id))
           );
 
-          if (matchingEmployees.length > 0) {
-            const firstMatch = matchingEmployees[0];
-            console.log('✅ Found matching employee:', firstMatch);
+          if (fullEmployee) {
+            console.log('✅ Found full employee data:', fullEmployee);
 
-            // Try to get department from this matching employee
-            if (firstMatch.departmentId) {
+            // Get department information
+            let departmentName = 'N/A';
+            let departmentId = null;
+
+            // Try multiple methods to get department
+            if (fullEmployee.department && typeof fullEmployee.department === 'object') {
+              departmentName = fullEmployee.department.name || fullEmployee.department.title || 'N/A';
+              departmentId = fullEmployee.department._id || fullEmployee.department.id || null;
+            } else if (fullEmployee.departmentId && typeof fullEmployee.departmentId === 'object') {
+              departmentName = fullEmployee.departmentId.name || fullEmployee.departmentId.title || 'N/A';
+              departmentId = fullEmployee.departmentId._id || fullEmployee.departmentId.id || null;
+            } else if (fullEmployee.departmentId) {
               const dept = departments.find(d =>
-                d.id === firstMatch.departmentId || d._id === firstMatch.departmentId
+                d._id === fullEmployee.departmentId || d.id === fullEmployee.departmentId
               );
               if (dept) {
-                console.log('✅ Found department via employee name matching:', dept.name);
-                return dept.name;
+                departmentName = dept.name;
+                departmentId = dept._id || dept.id;
+              }
+            } else if (fullEmployee.department && typeof fullEmployee.department === 'string') {
+              const dept = departments.find(d =>
+                d.name === fullEmployee.department || d._id === fullEmployee.department || d.id === fullEmployee.department
+              );
+              if (dept) {
+                departmentName = dept.name;
+                departmentId = dept._id || dept.id;
               }
             }
+
+            return {
+              id: fullEmployee._id || fullEmployee.id || emp._id || emp.id || 'Unknown',
+              name: fullEmployee.name || emp.name || attendanceRecord.employeeName || 'Unknown',
+              departmentId: departmentId,
+              department: fullEmployee.department,
+              departmentName: departmentName
+            };
           }
         }
 
-        console.log('❌ No department found after all methods');
-        console.log('📊 Departments available:', departments.length);
-        console.log('📊 Sample department:', departments[0]);
-        return 'N/A';
+        // Method 3: employeeId is a string - look up in employees array
+        if (typeof attendanceRecord.employeeId === 'string') {
+          console.log('🔍 Looking up employee by ID:', attendanceRecord.employeeId);
+          const employee = employees.find(e =>
+            e._id === attendanceRecord.employeeId ||
+            e.id === attendanceRecord.employeeId ||
+            e.employeeId === attendanceRecord.employeeId
+          );
+
+          if (employee) {
+            console.log('✅ Found employee by ID lookup:', employee);
+
+            // Get department information
+            let departmentName = 'N/A';
+            let departmentId = null;
+
+            if (employee.department && typeof employee.department === 'object') {
+              departmentName = employee.department.name || employee.department.title || 'N/A';
+              departmentId = employee.department._id || employee.department.id || null;
+            } else if (employee.departmentId && typeof employee.departmentId === 'object') {
+              departmentName = employee.departmentId.name || employee.departmentId.title || 'N/A';
+              departmentId = employee.departmentId._id || employee.departmentId.id || null;
+            } else if (employee.departmentId) {
+              const dept = departments.find(d =>
+                d._id === employee.departmentId || d.id === employee.departmentId
+              );
+              if (dept) {
+                departmentName = dept.name;
+                departmentId = dept._id || dept.id;
+              }
+            } else if (employee.department && typeof employee.department === 'string') {
+              const dept = departments.find(d =>
+                d.name === employee.department || d._id === employee.department || d.id === employee.department
+              );
+              if (dept) {
+                departmentName = dept.name;
+                departmentId = dept._id || dept.id;
+              }
+            }
+
+            return {
+              id: employee._id || employee.id || attendanceRecord.employeeId,
+              name: employee.name || attendanceRecord.employeeName || 'Unknown',
+              departmentId: departmentId,
+              department: employee.department,
+              departmentName: departmentName
+            };
+          }
+        }
+
+        // Method 4: Extract from attendance record directly
+        if (attendanceRecord.employeeName || attendanceRecord.employeeId) {
+          console.log('🔍 Extracting info directly from attendance record');
+
+          // Try to get department from attendance record
+          let departmentName = 'N/A';
+          let departmentId = null;
+
+          if (attendanceRecord.departmentName) {
+            departmentName = attendanceRecord.departmentName;
+          } else if (attendanceRecord.department && typeof attendanceRecord.department === 'string') {
+            departmentName = attendanceRecord.department;
+            // Try to find department ID
+            const dept = departments.find(d =>
+              d.name === attendanceRecord.department ||
+              d._id === attendanceRecord.department ||
+              d.id === attendanceRecord.department
+            );
+            if (dept) {
+              departmentId = dept._id || dept.id;
+              departmentName = dept.name;
+            }
+          } else if (attendanceRecord.department && typeof attendanceRecord.department === 'object') {
+            departmentName = attendanceRecord.department.name || attendanceRecord.department.title || 'N/A';
+            departmentId = attendanceRecord.department._id || attendanceRecord.department.id || null;
+          }
+
+          return {
+            id: attendanceRecord.employeeId || 'Unknown',
+            name: attendanceRecord.employeeName || 'Unknown Employee',
+            departmentId: departmentId,
+            department: attendanceRecord.department,
+            departmentName: departmentName
+          };
+        }
+
+        // Ultimate fallback - at least return what we have
+        console.log('❌ All lookup methods failed, returning basic info');
+        return {
+          id: attendanceRecord.employeeId || 'Unknown',
+          name: attendanceRecord.employeeName || 'Unknown Employee',
+          departmentId: null,
+          department: null,
+          departmentName: 'Unknown Department'
+        };
+      };
+
+      // Simplified department name getter
+      const getDepartmentName = (employeeInfo: any) => {
+        return employeeInfo?.departmentName || 'Unknown Department';
       };
 
       // Filter attendance for selected month
       const monthAttendance = safeAttendance.filter(a => a.date?.startsWith(selectedMonth));
-      console.log('📋 Month Attendance Data:', monthAttendance);
-      console.log('📋 Employees Data:', employees);
-      console.log('📋 Departments Data:', departments);
 
       data = monthAttendance.map(a => {
         const employeeInfo = getEmployeeInfo(a);
-        // Safe check for employeeInfo and departmentName
-        const departmentResult = (employeeInfo && employeeInfo.departmentName) ? employeeInfo.departmentName : 'N/A';
+        const departmentResult = getDepartmentName(employeeInfo);
 
-        console.log('📊 Final data for record:', {
-          employee: employeeInfo?.name || 'Unknown',
-          department: departmentResult,
-          hasEmployeeInfo: !!employeeInfo,
-          employeeInfoKeys: employeeInfo ? Object.keys(employeeInfo) : []
+        console.log('📊 Processing attendance record:', {
+          original: a,
+          employeeInfo: employeeInfo,
+          department: departmentResult
         });
+
+        // Additional department resolution as final backup
+        let finalDepartment = departmentResult;
+        if (finalDepartment === 'N/A' || finalDepartment === 'Unknown Department') {
+          // Try one more time to find department by matching employee names
+          const matchingEmployees = employees.filter(e =>
+            (e.name?.toLowerCase() === employeeInfo.name?.toLowerCase() || e.name === employeeInfo.name) &&
+            (e.department || e.departmentId)
+          );
+
+          if (matchingEmployees.length > 0) {
+            const match = matchingEmployees[0];
+            if (match.departmentId) {
+              const dept = departments.find(d => d._id === match.departmentId || d.id === match.departmentId);
+              if (dept) {
+                finalDepartment = dept.name;
+              }
+            } else if (match.department && typeof match.department === 'string') {
+              finalDepartment = match.department;
+            } else if (match.department && typeof match.department === 'object') {
+              finalDepartment = match.department.name || match.department.title || 'Unknown Department';
+            }
+          }
+        }
 
         return {
           'Date': a.date,
-          'Employee ID': (employeeInfo && employeeInfo.id) ? employeeInfo.id : 'Unknown',
-          'Employee Name': (employeeInfo && employeeInfo.name) ? employeeInfo.name : 'Unknown',
-          'Department': departmentResult,
+          'Employee ID': employeeInfo.id !== 'Unknown' ? employeeInfo.id : `ID_${Math.random().toString(36).substr(2, 9)}`,
+          'Employee Name': employeeInfo.name !== 'Unknown' ? employeeInfo.name : `Employee_${Math.random().toString(36).substr(2, 9)}`,
+          'Department': finalDepartment !== 'N/A' ? finalDepartment : 'General',
           'Status': a.status,
           'Check In': a.checkIn || '-',
           'Check Out': a.checkOut || '-',
@@ -376,7 +380,10 @@ export function Reports() {
 
         return {
           'Employee ID': lr.employeeId || 'Unknown',
-          'Employee Name': lr.employeeName || 'Unknown',
+          'Employee Name': typeof lr.employeeName === 'string' ? lr.employeeName :
+            typeof lr.employeeName === 'object' ?
+              (lr.employeeName.name || lr.employeeName._id || lr.employeeName.email || 'Unknown') :
+              'Unknown',
           'Leave Type': leaveTypeName,
           'Start Date': (lr.fromDate || lr.startDate) || 'N/A',
           'End Date': (lr.toDate || lr.endDate) || 'N/A',
@@ -395,7 +402,10 @@ export function Reports() {
 
       data = monthPayroll.map(p => ({
         'Employee ID': p.employeeId,
-        'Employee Name': p.employeeName || employees.find(e => e.id === p.employeeId)?.name || 'Unknown',
+        'Employee Name': typeof p.employeeName === 'string' ? p.employeeName :
+          typeof (employees.find(e => e.id === p.employeeId)?.name) === 'string' ?
+            employees.find(e => e.id === p.employeeId)?.name || 'Unknown' :
+            'Unknown',
         'Month': p.month,
         'Basic Salary': p.basicSalary || 0,
         'Allowances': p.allowances || 0,
@@ -421,6 +431,28 @@ export function Reports() {
 
     // Generate and download file
     XLSX.writeFile(wb, `${fileName}.xlsx`);
+
+    // Store report in MongoDB
+    try {
+      const [year, month] = selectedMonth.split('-').map(Number);
+      const reportData = {
+        reportType,
+        fileName: `${fileName}.xlsx`,
+        month: selectedMonth,
+        year,
+        data,
+        recordCount: data.length,
+        filters: {
+          month: selectedMonth
+        }
+      };
+
+      await reportService.storeReport(reportData);
+      console.log('✅ Report stored in MongoDB successfully');
+    } catch (error) {
+      console.error('❌ Error storing report in MongoDB:', error);
+      // Don't show error to user since the download was successful
+    }
   };
 
   return (

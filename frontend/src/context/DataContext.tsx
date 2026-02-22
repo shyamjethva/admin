@@ -198,6 +198,7 @@ interface DataContextType {
   addAttendance: (attendance: any) => Promise<void>;
   updateAttendance: (id: string, attendance: any) => Promise<void>;
   deleteAttendance: (id: string) => Promise<void>;
+  markAbsentEmployees: (date?: string) => Promise<void>;
   addLeaveRequest: (request: any) => Promise<void>;
   updateLeaveRequest: (id: string, request: any) => Promise<void>;
   deleteLeaveRequest: (id: string) => Promise<void>;
@@ -292,8 +293,8 @@ export const DataProvider = ({ children }) => {
 
   const capitalizeStatus = (status) => {
     if (!status) return status;
-    const normalized = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
-    return ["Active", "Inactive"].includes(normalized) ? normalized : undefined;
+    // Keep status as-is since backend expects lowercase
+    return status.toLowerCase();
   };
 
   // Normalize ID function
@@ -641,6 +642,31 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const markAbsentEmployees = async (date?: string) => {
+    try {
+      const response = await api.post('/attendance/mark-absent', { date });
+      console.log('✅ Marked absent employees:', response.data);
+
+      // Refresh attendance data after marking absent employees
+      await fetchData("attendance", setAttendance, initialAttendance);
+
+      // Show success message
+      if (typeof window !== 'undefined' && window.alert) {
+        alert(`✅ Successfully marked ${response.data.data.absentCount} employees as absent for ${response.data.data.date}`);
+      }
+    } catch (err) {
+      console.error("markAbsentEmployees failed:", err?.response?.data || err);
+
+      // Show error message
+      const errorMessage = err?.response?.data?.message || err.message || "Failed to mark absent employees";
+      if (typeof window !== 'undefined' && window.alert) {
+        alert(`❌ Error: ${errorMessage}`);
+      }
+
+      throw err;
+    }
+  };
+
   // Leave Request CRUD functions
   const addLeaveRequest = async (request) => {
     try {
@@ -679,7 +705,7 @@ export const DataProvider = ({ children }) => {
 
   const updateLeaveRequest = async (id, request) => {
     try {
-      const payload = {};
+      const payload: any = {};
       if (request.status) payload.status = request.status.toLowerCase(); // Keep lowercase to match backend enum
       if (request.reason) payload.reason = request.reason;
 
@@ -1138,27 +1164,27 @@ export const DataProvider = ({ children }) => {
       const payload = {};
 
       // Handle all fields that might be updated
-      if ('title' in announcement) payload.title = announcement.title;
-      if ('content' in announcement) payload.content = announcement.content;
+      if ('title' in announcement) (payload as any).title = announcement.title;
+      if ('content' in announcement) (payload as any).content = announcement.content;
 
       // Handle category mapping
       if ('category' in announcement && announcement.category !== undefined) {
-        payload.type = categoryToTypeMap[announcement.category] || "general";
-        payload.audience = announcement.category === 'company-wide' ? 'all' :
+        (payload as any).type = categoryToTypeMap[announcement.category] || "general";
+        (payload as any).audience = announcement.category === 'company-wide' ? 'all' :
           announcement.category === 'hr-updates' ? 'hr' : 'employee';
       }
 
-      if ('department' in announcement) payload.department = announcement.department;
-      if ('priority' in announcement) payload.priority = announcement.priority;
+      if ('department' in announcement) (payload as any).department = announcement.department;
+      if ('priority' in announcement) (payload as any).priority = announcement.priority;
 
       // Handle date fields
       if ('createdAt' in announcement) {
-        payload.startDate = announcement.createdAt || null;
+        (payload as any).startDate = announcement.createdAt || null;
       }
       if ('expiresAt' in announcement) {
-        payload.endDate = announcement.expiresAt || null;
+        (payload as any).endDate = announcement.expiresAt || null;
       }
-      if ('isActive' in announcement) payload.isActive = announcement.isActive;
+      if ('isActive' in announcement) (payload as any).isActive = announcement.isActive;
 
       console.log('📤 Sending update payload:', payload);
 
@@ -1192,14 +1218,31 @@ export const DataProvider = ({ children }) => {
 
       const data = response.data;
       let list = Array.isArray(data) ? data : data.data || [];
-      // Special normalization for tasks: assignedTo may be an object (populated) or string (id)
+      // Special normalization for tasks: assignedTo and assignedBy may be objects (populated) or strings (ids)
       if (module === 'tasks') {
         list = list.map((task) => {
           let assignedTo = task.assignedTo;
+          let assignedBy = task.assignedBy;
+          let assignedByName = task.assignedByName;
+
           if (assignedTo && typeof assignedTo === 'object') {
             assignedTo = assignedTo._id || assignedTo.id || assignedTo;
           }
-          return { ...task, assignedTo };
+
+          if (assignedBy && typeof assignedBy === 'object') {
+            assignedBy = assignedBy._id || assignedBy.id || assignedBy;
+            // If assignedBy was an object with a name, use it
+            if (assignedBy.name) {
+              assignedByName = assignedBy.name;
+            }
+          }
+
+          return {
+            ...task,
+            assignedTo,
+            assignedBy,
+            assignedByName: assignedByName || (assignedBy ? 'Admin' : 'System')
+          };
         });
       }
       console.log(`✅ Fetched ${module}:`, list);
@@ -1315,7 +1358,6 @@ export const DataProvider = ({ children }) => {
     clients,
     clockRecords,
     absences,
-    leaveRequests,
     attendance,
     interviews,
     payrollEntries,
@@ -1346,6 +1388,7 @@ export const DataProvider = ({ children }) => {
     addAttendance,
     updateAttendance,
     deleteAttendance,
+    markAbsentEmployees,
     addLeaveRequest,
     updateLeaveRequest,
     deleteLeaveRequest,

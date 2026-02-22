@@ -33,6 +33,7 @@ const menuItems: MenuItem[] = [
     icon: <Calendar size={20} />,
     roles: ['admin', 'hr'],
     children: [
+      { id: 'employee-clock-records', label: 'Employee Clock Records' },
       { id: 'shifts', label: 'Shifts' },
     ],
   },
@@ -43,8 +44,6 @@ const menuItems: MenuItem[] = [
     roles: ['employee'],
     children: [],
   },
-  // ...existing code...
-  // ...existing code...
   {
     id: 'leave',
     label: 'Leave Management',
@@ -115,7 +114,10 @@ const menuItems: MenuItem[] = [
     label: 'Reports',
     icon: <BarChart3 size={20} />,
     roles: ['admin', 'hr'],
-    children: [],
+    children: [
+      { id: 'reports', label: 'Generate Reports' },
+      { id: 'report-test', label: 'Report Storage Test' },
+    ],
   },
   {
     id: 'help-support',

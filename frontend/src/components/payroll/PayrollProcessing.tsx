@@ -644,11 +644,21 @@ export function PayrollProcessing() {
                 disabled={submitting}
               >
                 <option value="">Select Employee</option>
-                {employees.map((emp: any) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.name}
-                  </option>
-                ))}
+                {employees.map((emp: any) => {
+                  // Handle different employee data structures
+                  const employeeId = emp.id || emp._id || (emp as any).employeeId;
+                  const employeeName = emp.name || (emp as any).fullName || (emp as any).displayName || 'Unknown Employee';
+                  const employeeEmail = emp.email || (emp as any).email || '';
+
+                  // Only show employees with valid IDs
+                  if (!employeeId) return null;
+
+                  return (
+                    <option key={employeeId} value={employeeId}>
+                      {employeeName}{employeeEmail ? ` (${employeeEmail})` : ''})
+                    </option>
+                  );
+                })}
               </select>
             </div>
 

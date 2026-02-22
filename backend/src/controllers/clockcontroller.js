@@ -3,16 +3,41 @@ import mongoose from "mongoose";
 
 // Clock In - Create or update attendance record
 export const clockIn = async (req, res) => {
+    console.log('🔵 CLOCK IN ENDPOINT HIT');
+    console.log('🔵 Request headers:', req.headers);
+    console.log('🔵 Request body:', req.body);
+    console.log('🔵 User from auth:', req.user);
+
     try {
         const { employeeId, employeeName } = req.body;
+        console.log('🔵 CLOCK IN REQUEST:', { employeeId, employeeName });
+
+        // Validate required fields for non-absent status
+        if (!employeeId) {
+            return res.status(400).json({
+                success: false,
+                message: "Employee ID is required"
+            });
+        }
+
         const today = new Date().toISOString().split('T')[0];
         const clockInTime = new Date().toTimeString().split(' ')[0].substring(0, 5);
 
         // Check if attendance record already exists for today
-        let attendance = await Attendance.findOne({
-            employeeId,
-            date: today
-        });
+        let query = { date: today };
+
+        // Handle employeeId properly - check if it's a valid ObjectId string
+        if (mongoose.Types.ObjectId.isValid(employeeId)) {
+            console.log('✅ Valid ObjectId, converting to ObjectId');
+            query.employeeId = new mongoose.Types.ObjectId(employeeId);
+        } else {
+            console.log('⚠️ Invalid ObjectId format, using string');
+            query.employeeId = employeeId;
+        }
+
+        console.log('🔍 Attendance query:', JSON.stringify(query, null, 2));
+
+        let attendance = await Attendance.findOne(query);
 
         if (attendance) {
             // If record exists, update clockIn time
@@ -43,9 +68,12 @@ export const clockIn = async (req, res) => {
             message: "Clocked in successfully"
         });
     } catch (err) {
+        console.error('❌ CLOCK IN ERROR:', err);
+        console.error('❌ Error stack:', err.stack);
         res.status(500).json({
             success: false,
-            message: err.message
+            message: err.message,
+            error: err.name
         });
     }
 };
@@ -58,10 +86,16 @@ export const clockOut = async (req, res) => {
         const clockOutTime = new Date().toTimeString().split(' ')[0].substring(0, 5);
 
         // Find today's attendance record
-        const attendance = await Attendance.findOne({
-            employeeId,
-            date: today
-        });
+        let query = { date: today };
+
+        // Handle employeeId properly
+        if (mongoose.Types.ObjectId.isValid(employeeId)) {
+            query.employeeId = new mongoose.Types.ObjectId(employeeId);
+        } else {
+            query.employeeId = employeeId;
+        }
+
+        const attendance = await Attendance.findOne(query);
 
         if (!attendance) {
             return res.status(404).json({
@@ -120,10 +154,16 @@ export const getTodayAttendance = async (req, res) => {
         const { employeeId } = req.params;
         const today = new Date().toISOString().split('T')[0];
 
-        const attendance = await Attendance.findOne({
-            employeeId,
-            date: today
-        }).populate("employeeId", "name email");
+        let query = { date: today };
+
+        // Handle employeeId properly
+        if (mongoose.Types.ObjectId.isValid(employeeId)) {
+            query.employeeId = new mongoose.Types.ObjectId(employeeId);
+        } else {
+            query.employeeId = employeeId;
+        }
+
+        const attendance = await Attendance.findOne(query).populate("employeeId", "name email");
 
         res.json({
             success: true,
@@ -155,16 +195,21 @@ export const getWeeklyAttendance = async (req, res) => {
         console.log('📅 Date range:', startDateStr, 'to', endDateStr);
 
         // Try to find records matching the employeeId (could be string or ObjectId)
-        const attendanceRecords = await Attendance.find({
-            $or: [
-                { employeeId: employeeId },
-                { employeeId: mongoose.Types.ObjectId.isValid(employeeId) ? new mongoose.Types.ObjectId(employeeId) : employeeId }
-            ],
+        let query = {
             date: {
                 $gte: startDateStr,
                 $lte: endDateStr
             }
-        })
+        };
+
+        // Handle employeeId properly
+        if (mongoose.Types.ObjectId.isValid(employeeId)) {
+            query.employeeId = new mongoose.Types.ObjectId(employeeId);
+        } else {
+            query.employeeId = employeeId;
+        }
+
+        const attendanceRecords = await Attendance.find(query)
             .sort({ date: 1 })
             .populate("employeeId", "name email");
 
@@ -194,7 +239,12 @@ export const getAllAttendanceRecords = async (req, res) => {
         let query = {};
 
         if (employeeId) {
-            query.employeeId = employeeId;
+            // Handle employeeId properly
+            if (mongoose.Types.ObjectId.isValid(employeeId)) {
+                query.employeeId = new mongoose.Types.ObjectId(employeeId);
+            } else {
+                query.employeeId = employeeId;
+            }
         }
 
         if (startDate || endDate) {

@@ -6,32 +6,7 @@ import dotenv from "dotenv";
 // Load environment variables
 dotenv.config();
 
-const testUsers = [
-    {
-        name: "Admin User",
-        email: "rakshit@gmail.com",
-        password: "password",
-        role: "admin",
-        department: "Administration",
-        designation: "System Administrator",
-    },
-    {
-        name: "HR Manager",
-        email: "hemal@gmail.com",
-        password: "password",
-        role: "hr",
-        department: "Human Resources",
-        designation: "HR Manager",
-    },
-    {
-        name: "John Doe",
-        email: "employee@company.com",
-        password: "password",
-        role: "employee",
-        department: "Development",
-        designation: "Senior Developer",
-    },
-];
+const testUsers = [];
 
 async function seedUsers() {
     try {
@@ -42,7 +17,7 @@ async function seedUsers() {
         // Clear existing test users (optional)
         const testEmails = testUsers.map((u) => u.email);
         await User.deleteMany({ email: { $in: testEmails } });
-        console.log("🗑️  Cleared existing test users");
+        // console.log("🗑️  Cleared existing test users");
 
         // Hash passwords and create users
         for (const userData of testUsers) {
@@ -51,11 +26,11 @@ async function seedUsers() {
                 ...userData,
                 password: hashedPassword,
             });
-            console.log(`✅ Created user: ${user.email} (${user.role})`);
+            // console.log(`✅ Created user: ${user.email} (${user.role})`);
         }
 
-        console.log("\n🎉 Seed completed successfully!");
-        console.log("\nYou can now login with:");
+        // console.log("\n🎉 Seed completed successfully!");
+        // console.log("\nYou can now login with:");
         testUsers.forEach((u) => {
             console.log(`  📧 ${u.email} / 🔑 ${u.password} (${u.role})`);
         });

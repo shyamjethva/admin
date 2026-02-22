@@ -29,13 +29,25 @@ export function AttendanceReport() {
   const filteredAttendance = attendance.filter(a => a.date.startsWith(selectedMonth));
 
   const employeeStats = employees.map(emp => {
-    const empAttendance = filteredAttendance.filter(a => a.employeeId === emp.id);
+    // Safely extract employee ID
+    const empId = emp.id || emp._id;
+    const empAttendance = filteredAttendance.filter(a => {
+      // Handle case where a.employeeId might be an object
+      const attendanceEmpId = typeof a.employeeId === 'object' ?
+        (a.employeeId._id || a.employeeId.id) : a.employeeId;
+      return attendanceEmpId === empId;
+    });
     const present = empAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
     const absent = empAttendance.filter(a => a.status === 'absent').length;
     const totalHours = empAttendance.reduce((sum, a) => sum + a.hours, 0);
 
     // Enhanced department resolution with debugging
-    console.log(`🔄 Processing employee: ${emp.name}`, emp);
+    const empName = typeof emp.name === 'string' ?
+      emp.name :
+      typeof emp.name === 'object' ?
+        (emp.name.name || emp.name._id || emp.name.email || 'Unknown Employee') :
+        'Unknown Employee';
+    console.log(`🔄 Processing employee: ${empName}`, emp);
     console.log(`🔄 Available departments:`, departments);
 
     let departmentName = 'N/A';
@@ -87,14 +99,15 @@ export function AttendanceReport() {
 
     // Method 3: Try to find department by employee name pattern (fallback)
     if (departmentName === 'N/A') {
-      console.log(`🔄 Trying fallback methods for ${emp.name}`);
+      console.log(`🔄 Trying fallback methods for ${empName}`);
       // You can add more sophisticated fallback logic here if needed
     }
 
-    console.log(`📊 Final department for ${emp.name}: ${departmentName}`);
+    console.log(`📊 Final department for ${empName}: ${departmentName}`);
 
     return {
       ...emp,
+      name: empName, // Use the safely extracted name
       present,
       absent,
       totalHours: totalHours.toFixed(1),
@@ -106,7 +119,11 @@ export function AttendanceReport() {
     try {
       // Prepare data for Excel
       const reportData = employeeStats.map(stat => ({
-        'Employee Name': stat.name,
+        'Employee Name': typeof stat.name === 'string' ?
+          stat.name :
+          typeof stat.name === 'object' ?
+            (stat.name.name || stat.name._id || stat.name.email || 'Unknown Employee') :
+            'Unknown Employee',
         'Department': stat.department, // Now properly mapped
         'Present Days': stat.present,
         'Absent Days': stat.absent,
@@ -196,7 +213,13 @@ export function AttendanceReport() {
                 return (
                   <tr key={stat.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{stat.name}</div>
+                      <div className="font-medium text-gray-900">{
+                        typeof stat.name === 'string' ?
+                          stat.name :
+                          typeof stat.name === 'object' ?
+                            (stat.name.name || stat.name._id || stat.name.email || 'Unknown Employee') :
+                            'Unknown Employee'
+                      }</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-gray-600">{stat.department}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-green-600 font-medium">{stat.present}</td>

@@ -1,4 +1,5 @@
 import Attendance from "../models/Attendance.js";
+import Employee from "../models/Employee.js";
 
 export const getAllAttendance = async (req, res) => {
     try {
@@ -67,6 +68,81 @@ export const createAttendance = async (req, res) => {
     } catch (err) {
         console.error('❌ Error in createAttendance:', err);
         res.status(500).json({ message: err.message });
+    }
+};
+
+// Mark absent employees for a specific date
+export const markAbsentEmployees = async (req, res) => {
+    try {
+        const { date } = req.body;
+        const targetDate = date || new Date().toISOString().split('T')[0]; // Use provided date or today
+
+        console.log(`📅 Marking absent employees for date: ${targetDate}`);
+
+        // Get all employees
+        const employees = await Employee.find({}, '_id name');
+        console.log(`👥 Found ${employees.length} employees`);
+
+        // Get attendance records for the target date
+        const existingAttendances = await Attendance.find({ date: targetDate });
+        console.log(`📋 Found ${existingAttendances.length} existing attendance records for ${targetDate}`);
+
+        // Get employee IDs who have already clocked in today
+        const presentEmployeeIds = existingAttendances.map(att => att.employeeId.toString());
+
+        // Find employees who haven't clocked in today
+        const absentEmployees = employees.filter(emp =>
+            !presentEmployeeIds.includes(emp._id.toString())
+        );
+
+        console.log(`👤 ${absentEmployees.length} employees marked as absent`);
+
+        // Create attendance records for absent employees
+        const absentRecords = [];
+        for (const employee of absentEmployees) {
+            const absentRecord = {
+                employeeId: employee._id,
+                employeeName: employee.name,
+                date: targetDate,
+                checkIn: null, // No check-in time
+                checkOut: null, // No check-out time
+                status: 'absent',
+                hours: 0,
+                notes: 'Marked as absent - did not clock in today'
+            };
+
+            // Check if an attendance record already exists for this employee today
+            const existingRecord = await Attendance.findOne({
+                employeeId: employee._id,
+                date: targetDate
+            });
+
+            if (!existingRecord) {
+                const createdRecord = await Attendance.create(absentRecord);
+                absentRecords.push(createdRecord);
+                console.log(`📝 Created absent record for ${employee.name} (ID: ${employee._id})`);
+            } else {
+                console.log(`⚠️  Absent record already exists for ${employee.name} (ID: ${employee._id})`);
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Successfully marked ${absentRecords.length} employees as absent for ${targetDate}`,
+            data: {
+                date: targetDate,
+                totalEmployees: employees.length,
+                absentCount: absentRecords.length,
+                presentCount: existingAttendances.length
+            }
+        });
+
+    } catch (err) {
+        console.error('❌ Error marking absent employees:', err);
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
     }
 };
 

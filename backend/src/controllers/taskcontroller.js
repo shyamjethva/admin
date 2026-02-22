@@ -10,67 +10,43 @@ export const getTasks = async (req, res) => {
 
         // If user is not admin or hr, only show tasks assigned to them
         if (role !== 'admin' && role !== 'hr') {
-            // Get the current user to access their employeeId
+            // Get the current user to access their email
             const User = await import('../models/User.js');
-            const currentUser = await User.default.findById(id).select('employeeId email role name');
+            const currentUser = await User.default.findById(id).select('email role name');
 
             console.log(`👤 Current user:`, JSON.stringify({
                 id: currentUser._id,
                 name: currentUser.name,
                 email: currentUser.email,
-                employeeId: currentUser.employeeId,
                 role: currentUser.role
             }, null, 2));
 
-            if (currentUser && currentUser.employeeId) {
-                // Try matching using the stored employeeId
-                const mongoose = await import('mongoose');
-
-                console.log(`👤 User's employeeId: "${currentUser.employeeId}" (type: ${typeof currentUser.employeeId})`);
-                console.log(`👤 Is valid ObjectId:`, mongoose.Types.ObjectId.isValid(currentUser.employeeId));
-
-                // Handle multiple possible formats of the employee ID
-                const possibleIds = [];
-
-                // Add the direct employeeId
-                possibleIds.push(currentUser.employeeId);
-
-                // If it's a valid ObjectId string, also add the ObjectId version
-                if (mongoose.Types.ObjectId.isValid(currentUser.employeeId)) {
-                    possibleIds.push(new mongoose.Types.ObjectId(currentUser.employeeId));
-                }
-
-                // Query for any of these possible IDs
-                query.assignedTo = { $in: possibleIds };
-                console.log(`📋 Query using possible IDs:`, possibleIds);
-            } else if (currentUser && currentUser.email) {
-                // Alternative approach: try to match by employee email
+            if (currentUser && currentUser.email) {
+                // Find employee by email
                 console.log(`📧 Attempting email-based matching with: ${currentUser.email}`);
-                const Employee = await import('../models/Employee.js');
-                const employee = await Employee.findOne({ email: currentUser.email });
+                const EmployeeModel = (await import('../models/Employee.js')).default;
+                const employee = await EmployeeModel.findOne({ email: currentUser.email });
 
                 console.log(`📧 Email match result:`, employee ? `Found employee: ${employee.name} (ID: ${employee._id})` : 'NOT FOUND');
 
                 if (employee) {
-                    // Again, handle multiple possible ID formats for the employee
+                    // Match tasks assigned to this employee's ObjectId
                     const mongoose = await import('mongoose');
                     const possibleEmpIds = [employee._id];
 
-                    // Add string version if different
-                    if (employee._id.toString() !== currentUser.email) { // Just a check to avoid adding email
-                        possibleEmpIds.push(employee._id.toString());
-                    }
+                    // Also add string version for flexibility
+                    possibleEmpIds.push(employee._id.toString());
 
                     query.assignedTo = { $in: possibleEmpIds };
-                    console.log(`📋 Query using possible employee IDs:`, possibleEmpIds);
+                    console.log(`📋 Query using employee ID:`, possibleEmpIds);
                 } else {
                     // If no matching employee found, return empty result
                     console.log('❌ No matching employee found, returning empty task list');
                     return res.json({ success: true, data: [] });
                 }
             } else {
-                // If no identifying information found, return empty result
-                console.log('❌ No identifying information found, returning empty task list');
+                // If no email found, return empty result
+                console.log('❌ No email found for user, returning empty task list');
                 return res.json({ success: true, data: [] });
             }
         } else {
@@ -79,7 +55,8 @@ export const getTasks = async (req, res) => {
 
         const tasks = await Task.find(query)
             .sort({ createdAt: -1 })
-            .populate("assignedTo", "name email _id");
+            .populate("assignedTo", "name email _id")
+            .populate("assignedBy", "name email _id");
 
         console.log(`✅ Found ${tasks.length} tasks for query:`, query);
 
@@ -93,7 +70,7 @@ export const getTasks = async (req, res) => {
 // GET /api/tasks/:id
 export const getTaskById = async (req, res) => {
     try {
-        const task = await Task.findById(req.params.id).populate("assignedTo", "name email");
+        const task = await Task.findById(req.params.id).populate("assignedTo", "name email _id").populate("assignedBy", "name email _id");
         if (!task) return res.status(404).json({ success: false, message: "Task not found" });
         return res.json({ success: true, data: task });
     } catch (err) {
@@ -106,9 +83,16 @@ export const getTaskById = async (req, res) => {
 export const createTask = async (req, res) => {
     try {
         console.log(`📝 Creating task with data:`, req.body);
-        const created = await Task.create(req.body);
-        const task = await Task.findById(created._id).populate("assignedTo", "name email _id");
-        console.log(`✅ Task created successfully:`, { id: task._id, title: task.title, assignedTo: task.assignedTo });
+
+        // Set assignedBy to the current user's ID
+        const taskData = {
+            ...req.body,
+            assignedBy: req.user.id  // Use the authenticated user's ID
+        };
+
+        const created = await Task.create(taskData);
+        const task = await Task.findById(created._id).populate("assignedTo", "name email _id").populate("assignedBy", "name email _id");
+        console.log(`✅ Task created successfully:`, { id: task._id, title: task.title, assignedTo: task.assignedTo, assignedBy: task.assignedBy });
         return res.status(201).json({ success: true, data: task });
     } catch (err) {
         console.error("createTask error:", err);
@@ -122,10 +106,14 @@ export const updateTask = async (req, res) => {
         // Log the update operation for debugging
         console.log(`🔧 Updating task ${req.params.id} with data:`, req.body);
 
-        const updated = await Task.findByIdAndUpdate(req.params.id, req.body, {
+        // Don't update assignedBy during task updates, keep original assigner
+        const updateData = { ...req.body };
+        delete updateData.assignedBy; // Prevent updating the assignedBy field
+
+        const updated = await Task.findByIdAndUpdate(req.params.id, updateData, {
             new: true,
             runValidators: true,
-        }).populate("assignedTo", "name email _id");
+        }).populate("assignedTo", "name email _id").populate("assignedBy", "name email _id");
 
         if (!updated) {
             console.log(`❌ Task ${req.params.id} not found for update`);
