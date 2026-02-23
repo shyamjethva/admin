@@ -21,7 +21,14 @@ export const clockIn = async (req, res) => {
         }
 
         const today = new Date().toISOString().split('T')[0];
-        const clockInTime = new Date().toTimeString().split(' ')[0].substring(0, 5);
+        // Capture the EXACT time when the request is processed (when button is clicked)
+        const currentTime = new Date();
+        const clockInTime = currentTime.toTimeString().split(' ')[0]; // HH:MM:SS format
+        const clockInTimestamp = currentTime; // Full timestamp with milliseconds
+
+        console.log('⏰ Clock in time being recorded:', clockInTime);
+        console.log('⏰ Clock in timestamp being recorded:', clockInTimestamp);
+        console.log('⏰ Current time when processing request:', new Date());
 
         // Check if attendance record already exists for today
         let query = { date: today };
@@ -36,15 +43,18 @@ export const clockIn = async (req, res) => {
         }
 
         console.log('🔍 Attendance query:', JSON.stringify(query, null, 2));
+        console.log('⏰ Clock in time being recorded:', clockInTime);
+        console.log('⏰ Timestamp being recorded:', clockInTimestamp);
 
         let attendance = await Attendance.findOne(query);
 
         if (attendance) {
             // If record exists, update clockIn time
             attendance.checkIn = clockInTime;
-            attendance.checkInTimestamp = new Date();
+            attendance.checkInTimestamp = clockInTimestamp;
             attendance.status = "present";
             attendance = await attendance.save();
+            console.log('✅ Updated existing attendance record with current time:', clockInTime);
         } else {
             // Create new attendance record
             attendance = await Attendance.create({
@@ -52,10 +62,11 @@ export const clockIn = async (req, res) => {
                 employeeName: employeeName || "",
                 date: today,
                 checkIn: clockInTime,
-                checkInTimestamp: new Date(),
+                checkInTimestamp: clockInTimestamp,
                 status: "present",
                 hours: 0
             });
+            console.log('✅ Created new attendance record with current time:', clockInTime);
         }
 
         // Populate employee details
@@ -83,7 +94,14 @@ export const clockOut = async (req, res) => {
     try {
         const { employeeId } = req.body;
         const today = new Date().toISOString().split('T')[0];
-        const clockOutTime = new Date().toTimeString().split(' ')[0].substring(0, 5);
+        // Capture the EXACT time when the request is processed (when button is clicked)
+        const currentTime = new Date();
+        const clockOutTime = currentTime.toTimeString().split(' ')[0]; // HH:MM:SS format
+        const clockOutTimestamp = currentTime; // Full timestamp with milliseconds
+
+        console.log('⏰ Clock out time being recorded:', clockOutTime);
+        console.log('⏰ Clock out timestamp being recorded:', clockOutTimestamp);
+        console.log('⏰ Current time when processing request:', new Date());
 
         // Find today's attendance record
         let query = { date: today };
@@ -111,8 +129,9 @@ export const clockOut = async (req, res) => {
             });
         }
 
-        // Update clockOut time
+        // Update clockOut time and timestamp
         attendance.checkOut = clockOutTime;
+        attendance.checkOutTimestamp = clockOutTimestamp; // Add the checkout timestamp
 
         // Calculate hours worked
         if (attendance.checkIn) {
@@ -135,12 +154,16 @@ export const clockOut = async (req, res) => {
         const populated = await Attendance.findById(updated._id)
             .populate("employeeId", "name email");
 
+        console.log('✅ Updated attendance record with checkout time:', clockOutTime);
+
         res.json({
             success: true,
             data: populated,
             message: "Clocked out successfully"
         });
     } catch (err) {
+        console.error('❌ CLOCK OUT ERROR:', err);
+        console.error('❌ Error stack:', err.stack);
         res.status(500).json({
             success: false,
             message: err.message

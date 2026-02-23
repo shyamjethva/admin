@@ -19,12 +19,14 @@ const attendanceSchema = new mongoose.Schema(
         checkIn: {
             type: String,
             required: false
-        }, // "09:00"
+        }, // "09:00:00"
         checkInTimestamp: { type: Date }, // ISO timestamp for timer
+
         checkOut: {
             type: String,
             required: false
-        },                 // "18:00"
+        },                 // "18:00:00"
+        checkOutTimestamp: { type: Date }, // ISO timestamp for timer
 
         status: {
             type: String,
