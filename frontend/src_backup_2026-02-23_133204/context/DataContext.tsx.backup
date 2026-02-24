@@ -1,0 +1,2205 @@
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from "react";
+import { useAuth } from "./AuthContext";
+import api from "../services/api";
+import clockService from "../services/clockservice";
+import { taskService } from "../services/taskService";
+import { whatchatService } from "../services/whatchatservices.ts";
+
+
+/** -------------------- Types -------------------- */
+export interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  profileImage?: string;
+  department?: string;
+  designation?: string;
+  departmentId?: string;
+  designationId?: string;
+  joiningDate: string;
+  status: "active" | "inactive";
+  salary: number;
+  avatar?: string;
+  address?: string;
+  bloodGroup?: string;
+  emergencyContact?: string;
+  role?: "Admin" | "HR" | "Employee";
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  description: string;
+  headOfDepartment: string;
+  employeeCount: number;
+}
+
+export interface Designation {
+  id: string;
+  title: string;
+  department?: string;
+  departmentId?: string;
+  departmentName?: string;
+  level: string;
+  description: string;
+}
+
+export interface Attendance {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  date: string;
+  checkIn: string;
+  checkOut: string;
+  status: "present" | "absent" | "late" | "half-day" | "on-leave";
+  hours: number;
+  notes?: string;
+}
+
+export interface Shift {
+  id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  description: string;
+}
+
+export interface LeaveRequest {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  days: number;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+  appliedOn: string;
+}
+
+export interface LeaveType {
+  id: string;
+  name: string;
+  daysAllowed: number;
+  description: string;
+  paidLeave: boolean;
+}
+
+export interface Holiday {
+  id: string;
+  name: string;
+  date: string;
+  type: "public" | "optional";
+  description: string;
+}
+
+export interface Birthday {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  date: string;
+  department: string;
+}
+
+export interface JobPosting {
+  id: string;
+  title: string;
+  department: string;
+  location: string;
+  type: "full-time" | "part-time" | "contract";
+  experience: string;
+  salary: string;
+  description: string;
+  requirements: string[];
+  postedDate: string;
+  status: "open" | "closed";
+}
+
+export interface Candidate {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  position: string;
+  experience: string;
+  status: "applied" | "screening" | "interview" | "offered" | "rejected";
+  appliedDate: string;
+  resume?: string;
+}
+
+export interface Interview {
+  id: string;
+  candidateId: string;
+  candidateName: string;
+  position: string;
+  date: string;
+  time: string;
+  interviewer: string;
+  mode: "in-person" | "video" | "phone";
+  status: "scheduled" | "completed" | "cancelled";
+}
+
+export interface PayrollEntry {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  month: string;
+  basicSalary: number;
+  allowances: number;
+  deductions: number;
+  netSalary: number;
+  status: "pending" | "processed" | "paid";
+}
+
+export interface SalaryComponent {
+  id: string;
+  name: string;
+  type: "allowance" | "deduction";
+  amount: number;
+  isPercentage: boolean;
+  description: string;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  category:
+  | "company-wide"
+  | "department"
+  | "hr-updates"
+  | "events"
+  | "alerts"
+  | "achievements"
+  | "policy";
+  priority: "low" | "medium" | "high" | "urgent";
+  department?: string;
+  createdBy: string;
+  createdAt: string;
+  expiresAt?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  content: string;
+  senderId: string;
+  senderName: string;
+  senderRole: "admin" | "hr" | "employee";
+  messageType: "text" | "file" | "image" | "system";
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string;
+  fileData?: string;
+  fileUrl?: string;
+  department?: string;
+  isPrivate: boolean;
+  recipientId?: string | null;
+  readBy: string[];
+  deliveredTo: string[];
+  isEdited: boolean;
+  editedAt?: string | null;
+  replyTo?: string | null;
+  reactions?: Array<{
+    userId: string;
+    emoji: string;
+    createdAt: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
+  sender?: {
+    name: string;
+    email: string;
+    avatar?: string;
+    role: string;
+  };
+  recipient?: {
+    name: string;
+    email: string;
+  };
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  assignedTo: string;
+  assignedToName: string;
+  assignedBy: string;
+  assignedByName: string;
+  taskType: "daily" | "weekly";
+  status: "pending" | "in-progress" | "completed";
+  priority: "low" | "medium" | "high";
+  dueDate: string;
+  createdAt: string;
+  isTimerRunning?: boolean;
+  timerStartTime?: string | null;
+  totalTimeSpent?: number;
+}
+
+export interface Client {
+  _id: string;
+  company: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  industry?: string;
+  projects?: number;
+  address?: string;
+  status: "active" | "inactive";
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ClockRecord {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  date: string;
+  clockIn?: string;
+  clockOut?: string;
+  status?: "clocked-in" | "clocked-out";
+  workHours?: number;
+  notes?: string;
+}
+
+/** ✅ FIX: Absence interface ko start/end compatible banaya */
+export interface Absence {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  type: "Sick" | "Personal" | "Unexcused" | "Emergency" | "Other";
+  status: "pending" | "excused" | "unexcused";
+  approvedBy?: string;
+}
+
+/** -------------------- Initial Data -------------------- */
+const initialEmployees: Employee[] = [];
+const initialDepartments: Department[] = [];
+const initialDesignations: Designation[] = [];
+const initialAttendance: Attendance[] = [];
+const initialShifts: Shift[] = [];
+const initialLeaveRequests: LeaveRequest[] = [];
+const initialLeaveTypes: LeaveType[] = [];
+const initialHolidays: Holiday[] = [];
+const initialBirthdays: Birthday[] = [];
+const initialAnniversaries: any[] = [];
+const initialJobPostings: JobPosting[] = [];
+const initialCandidates: Candidate[] = [];
+const initialInterviews: Interview[] = [];
+const initialAnnouncements: Announcement[] = [];
+const initialChatMessages: ChatMessage[] = [];
+const initialTasks: Task[] = [];
+const initialClients: Client[] = [];
+const initialClockRecords: ClockRecord[] = [];
+const initialAbsences: Absence[] = [];
+
+/** -------------------- Context Type -------------------- */
+interface DataContextType {
+  employees: Employee[];
+  departments: Department[];
+  designations: Designation[];
+  attendance: Attendance[];
+  shifts: Shift[];
+  leaveRequests: LeaveRequest[];
+  leaveTypes: LeaveType[];
+  holidays: Holiday[];
+  birthdays: Birthday[];
+  jobPostings: JobPosting[];
+  candidates: Candidate[];
+  interviews: Interview[];
+  payrollEntries: PayrollEntry[];
+  salaryComponents: SalaryComponent[];
+  announcements: Announcement[];
+  chatMessages: ChatMessage[];
+  tasks: Task[];
+  clients: Client[];
+  clockRecords: ClockRecord[];
+  absences: Absence[];
+
+  isClockActive: boolean;
+  workingTime: { hours: number; minutes: number; seconds: number };
+  toggleClock: () => void;
+
+  /** ✅ IMPORTANT: Task refresh */
+  refreshTasks: () => Promise<void>;
+
+  // CRUD
+  addEmployee: (employee: any) => void;
+  updateEmployee: (id: string, employee: any) => void;
+  deleteEmployee: (id: string) => void;
+
+  addDepartment: (department: any) => void;
+  updateDepartment: (id: string, department: any) => void;
+  deleteDepartment: (id: string) => void;
+
+  addDesignation: (designation: Omit<Designation, "id">) => void;
+  updateDesignation: (id: string, designation: Partial<Designation>) => void;
+  deleteDesignation: (id: string) => void;
+
+  addAttendance: (attendance: Omit<Attendance, "id">) => void;
+  updateAttendance: (id: string, attendance: Partial<Attendance>) => void;
+  deleteAttendance: (id: string) => void;
+
+  addShift: (shift: Omit<Shift, "id">) => void;
+  updateShift: (id: string, shift: Partial<Shift>) => void;
+  deleteShift: (id: string) => void;
+
+  addLeaveRequest: (request: any) => void;
+  updateLeaveRequest: (id: string, request: Partial<LeaveRequest>) => void;
+  deleteLeaveRequest: (id: string) => void;
+
+  addLeaveType: (leaveType: Omit<LeaveType, "id">) => void;
+  updateLeaveType: (id: string, leaveType: Partial<LeaveType>) => void;
+  deleteLeaveType: (id: string) => void;
+
+  addHoliday: (holiday: Omit<Holiday, "id">) => void;
+  updateHoliday: (id: string, holiday: Partial<Holiday>) => void;
+  deleteHoliday: (id: string) => void;
+
+  addBirthday: (birthday: Omit<Birthday, "id">) => void;
+  updateBirthday: (id: string, birthday: Partial<Birthday>) => void;
+  deleteBirthday: (id: string) => void;
+
+  addJobPosting: (job: Omit<JobPosting, "id">) => void;
+  updateJobPosting: (id: string, job: Partial<JobPosting>) => void;
+  deleteJobPosting: (id: string) => void;
+
+  addCandidate: (candidate: Omit<Candidate, "id">) => void;
+  updateCandidate: (id: string, candidate: Partial<Candidate>) => void;
+  deleteCandidate: (id: string) => void;
+
+  addInterview: (interview: Omit<Interview, "id">) => void;
+  updateInterview: (id: string, interview: Partial<Interview>) => void;
+  deleteInterview: (id: string) => void;
+
+  addPayrollEntry: (entry: Omit<PayrollEntry, "id">) => void;
+  updatePayrollEntry: (id: string, entry: Partial<PayrollEntry>) => void;
+  deletePayrollEntry: (id: string) => void;
+
+  addSalaryComponent: (component: Omit<SalaryComponent, "id">) => void;
+  updateSalaryComponent: (id: string, component: Partial<SalaryComponent>) => void;
+  deleteSalaryComponent: (id: string) => void;
+
+  addAnnouncement: (announcement: Omit<Announcement, "id">) => void;
+  updateAnnouncement: (id: string, announcement: Partial<Announcement>) => void;
+  deleteAnnouncement: (id: string) => void;
+
+  addChatMessage: (message: Omit<ChatMessage, "id">) => void;
+  updateChatMessage: (id: string, message: Partial<ChatMessage>) => void;
+  deleteChatMessage: (id: string) => void;
+
+  addTask: (task: Omit<Task, "id">) => void;
+  updateTask: (id: string, task: Partial<Task>) => void;
+  deleteTask: (id: string) => void;
+
+  addClient: (client: any) => void;
+  updateClient: (id: string, client: any) => void;
+  deleteClient: (id: string) => void;
+
+  addClockRecord: (record: Omit<ClockRecord, "id">) => void;
+  updateClockRecord: (id: string, record: Partial<ClockRecord>) => void;
+  deleteClockRecord: (id: string) => void;
+
+  addAbsence: (absence: Omit<Absence, "id">) => void;
+  updateAbsence: (id: string, absence: Partial<Absence>) => void;
+  deleteAbsence: (id: string) => void;
+}
+
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+/** -------------------- Endpoints -------------------- */
+const endpointMap: Record<string, string> = {
+  employees: "/employees",
+  departments: "/departments",
+  designations: "/designations",
+  attendance: "/attendance",
+  leaveRequests: "/leaves",
+  leaveTypes: "/leave-types",
+  announcements: "/announcements",
+  tasks: "/tasks",
+  shifts: "/shifts",
+  chat: "/chat",
+  weeklyPlans: "/weekly-plans",
+  jobPostings: "/recruitment/jobs",
+  candidates: "/recruitment/candidates",
+  interviews: "/recruitment/interviews",
+  payrollEntries: "/payroll",
+  clients: "/clients",
+  salaryComponents: "/salary-components",
+  celebrations: "/celebrations",
+  holidays: "/celebrations?type=holiday",
+  birthdays: "/celebrations?type=birthday",
+  anniversaries: "/celebrations?type=anniversary",
+  clockRecords: "/attendance",
+  absences: "/leaves",
+};
+
+/** -------------------- Helpers -------------------- */
+const normalizeId = <T extends any>(doc: any): T => {
+  if (!doc || typeof doc !== "object") return doc;
+  if (doc.id) return doc;
+  if (doc._id) return { ...doc, id: String(doc._id) };
+  return doc;
+};
+
+const isValidObjectId = (id: string): boolean => {
+  if (!id) return false;
+  return /^[0-9a-fA-F]{24}$/.test(id);
+};
+
+const capitalizeStatus = (status: string | undefined): string | undefined => {
+  if (!status) return status;
+  const normalized = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+  return ["Active", "Inactive"].includes(normalized) ? normalized : undefined;
+};
+
+/** Unwrap list from many backend styles */
+const unwrapList = (raw: any): any[] => {
+  // Handle direct arrays
+  if (Array.isArray(raw)) return raw;
+
+  const data = raw;
+  const listRaw =
+    data?.items ??
+    data?.data ??
+    data?.clients ??
+    data?.data?.clients ??
+    data?.data?.items ??
+    [];
+  return Array.isArray(listRaw) ? listRaw : [];
+};
+
+const mapStatus = (s: any) => {
+  const v = String(s ?? "").trim().toLowerCase();
+  if (["present"].includes(v)) return "present";
+  if (["absent"].includes(v)) return "absent";
+  if (["late"].includes(v)) return "late";
+  if (["half day", "half-day", "halfday"].includes(v)) return "half-day";
+  if (["on leave", "on-leave", "leave"].includes(v)) return "on-leave";
+  return "present";
+};
+
+
+/** -------------------- Provider -------------------- */
+export function DataProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [shifts, setShifts] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [holidays, setHolidays] = useState([]);
+  const [birthdays, setBirthdays] = useState([]);
+  const [anniversaries, setAnniversaries] = useState([]);
+
+
+  const [jobPostings, setJobPostings] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [interviews, setInterviews] = useState([]);
+  const [payrollEntries, setPayrollEntries] = useState([]);
+  const [salaryComponents, setSalaryComponents] = useState([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clockRecords, setClockRecords] = useState<ClockRecord[]>([]);
+  const [absences, setAbsences] = useState<Absence[]>([]);
+
+  const [isClockActive, setIsClockActive] = useState(false);
+  const [workingTime, setWorkingTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
+
+  /** ✅ universal fetch */
+  const fetchData = useCallback(
+    async (module: string, setter: Function, initial: any[]) => {
+      let endpoint = endpointMap[module];
+
+      if (module === "leaveRequests") {
+        // Use the base endpoint - backend doesn't have /all or /me routes
+        endpoint = endpointMap.leaveRequests;
+      }
+
+      if (!endpoint) {
+        setter(initial);
+        return;
+      }
+
+      try {
+        const res = await api.get<any>(endpoint);
+        console.log(`🔄 DataContext - API Response for ${module}:`, res);
+        console.log(`🔄 DataContext - Response type:`, typeof res);
+        console.log(`🔄 DataContext - Is array:`, Array.isArray(res));
+
+        // API service already returns response.data, so res is the actual array
+        const list = Array.isArray(res) ? res : unwrapList(res);
+        console.log(`🔄 DataContext - Final list for ${module}:`, list);
+
+        // designations mapping
+        if (module === "designations") {
+          const mapped = list.map((d: any) => ({
+            id: String(d._id || d.id),
+            title: String(d.name || d.title || ""),
+            departmentId: String(d.departmentId?._id || d.departmentId || ""),
+            departmentName: String(
+              d.departmentId?.name || d.departmentName || d.department?.name || d.department || ""
+            ),
+            level: String(d.level || ""),
+            description: String(d.description || ""),
+          }));
+          setter(mapped);
+          return;
+        }
+
+        // employees mapping
+        if (module === "employees") {
+          const mapped = list.map((e: any) => ({
+            id: String(e._id || e.id),
+            name: e.name || "",
+            email: e.email || "",
+            phone: e.phone || "",
+            profileImage: e.profileImage || "",
+            joiningDate: e.joiningDate || "",
+            status: (String(e.status || "active").toLowerCase() === "inactive" ? "inactive" : "active") as
+              | "active"
+              | "inactive",
+            salary: Number(e.salary || 0),
+            departmentId: String(e.departmentId?._id || e.departmentId || ""),
+            designationId: String(e.designationId?._id || e.designationId || ""),
+            departmentName: String(e.departmentId?.name || ""),
+            designationTitle: String(e.designationId?.name || e.designationId?.title || ""),
+          }));
+          setter(mapped);
+          return;
+        }
+
+        // departments mapping
+        if (module === "departments") {
+          const mapped = list.map((dept: any) => ({
+            id: String(dept._id || dept.id),
+            name: dept.name || "",
+            description: dept.description || "",
+            headOfDepartment: dept.headOfDepartment || dept.head?.name || dept.head || "",
+            employeeCount: Number(dept.employeeCount || 0),
+          }));
+          setter(mapped);
+          return;
+        }
+
+        // clients mapping
+        if (module === "clients") {
+          const mapped = list.map((c: any) => ({
+            _id: String(c._id),
+            company: c.company ?? "",
+            contactPerson: c.contactPerson ?? "",
+            email: c.email ?? "",
+            phone: c.phone ?? "",
+            address: c.address ?? "",
+            industry: c.industry ?? "",
+            projects: Number(c.projects ?? 0),
+            status: (c.status ?? "active") as "active" | "inactive",
+            createdAt: c.createdAt,
+            updatedAt: c.updatedAt,
+          }));
+          setter(mapped);
+          return;
+        }
+
+        // leaveRequests mapping
+        if (module === "leaveRequests") {
+          console.log('🔄 DataContext - Raw leave requests data:', list);
+          const mapped = list.map((lr: any) => ({
+            id: String(lr._id || lr.id),
+            employeeId: String(lr.employeeId || ""),
+            employeeName: lr.employeeName || "",
+            leaveType: lr.leaveTypeName || lr.leaveType || "",
+            startDate: lr.fromDate || lr.startDate || "",
+            endDate: lr.toDate || lr.endDate || "",
+            days: Number(lr.days || 1),
+            reason: lr.reason || "",
+            status: (lr.status || "pending").toLowerCase() as "pending" | "approved" | "rejected",
+            appliedOn: lr.createdAt ? new Date(lr.createdAt).toISOString().split("T")[0] : "",
+          }));
+          console.log('🔄 DataContext - Mapped leave requests data:', mapped);
+          setter(mapped);
+          return;
+        }
+
+        // leaveTypes mapping
+        if (module === "leaveTypes") {
+          console.log('🔄 DataContext - Raw leave types data:', list);
+          const mapped = list.map((lt: any) => ({
+            id: String(lt._id || lt.id),
+            name: lt.name || "",
+            code: lt.code || "",
+            description: lt.description || "",
+            maxDays: Number(lt.maxDays || 0),
+            isPaid: Boolean(lt.isPaid !== undefined ? lt.isPaid : true),
+            daysAllowed: Number(lt.maxDays || 0), // backward compatibility
+            paidLeave: Boolean(lt.isPaid !== undefined ? lt.isPaid : true), // backward compatibility
+          }));
+          console.log('🔄 DataContext - Mapped leave types data:', mapped);
+          setter(mapped);
+          return;
+        }
+
+        // holidays mapping
+        if (module === "holidays") {
+          const mapped = list.map((c: any) => ({
+            id: String(c._id || c.id),
+            name: c.title || "",
+            date: c.date ? new Date(c.date).toISOString().split("T")[0] : "",
+            type: (c.description?.toLowerCase().includes("optional") ? "optional" : "public") as
+              | "public"
+              | "optional",
+            description: c.description || "",
+          }));
+          setter(mapped);
+          return;
+        }
+
+        // birthdays mapping
+        if (module === "birthdays") {
+          const mapped = list.map((c: any) => ({
+            id: String(c._id || c.id),
+            employeeId: String(c.employeeId?._id || c.employeeId || c.user?._id || c.user || ""),
+            employeeName: c.employeeName || c.employeeId?.name || c.user?.name || c.title?.replace('Birthday - ', '') || "",
+            department: c.department || c.employeeId?.department || c.user?.department || "",
+            date: c.date ? new Date(c.date).toISOString().split("T")[0] : "",
+          }));
+          setter(mapped);
+          return;
+        }
+
+        // anniversaries mapping
+        if (module === "anniversaries") {
+          const mapped = list.map((c: any) => ({
+            id: String(c._id || c.id),
+            employeeId: String(c.employeeId?._id || c.employeeId || c.user?._id || c.user || ""),
+            employeeName: c.employeeName || c.employeeId?.name || c.user?.name || c.title?.replace('Work Anniversary - ', '')?.split(' ')[0] || "",
+            department: c.department || c.employeeId?.department || c.user?.department || "",
+            date: c.date ? new Date(c.date).toISOString().split("T")[0] : "",
+            yearsCompleted: c.yearsCompleted || 1,
+            joinDate: c.joinDate ? new Date(c.joinDate).toISOString().split("T")[0] : "",
+          }));
+          setter(mapped);
+          return;
+        }
+
+        // announcements mapping
+        if (module === "announcements") {
+          const mapped = list.map((a: any) => ({
+            id: String(a._id || a.id),
+            title: a.title || "",
+            content: a.content || a.body || "",
+            category: a.type === "general" ? "company-wide" :
+              a.type === "hr" ? "hr-updates" :
+                a.type === "event" ? "events" :
+                  a.type === "alert" ? "alerts" :
+                    a.type === "achievement" ? "achievements" :
+                      a.type === "policy" ? "policy" :
+                        a.type === "department" ? "department" :
+                          a.audience === "all" ? "company-wide" : // Handle legacy "all" audience
+                            "company-wide", // Default fallback
+            department: a.department || "",
+            priority: a.priority || "medium",
+            createdBy: a.createdBy?.name || a.createdBy || "",
+            createdAt: a.createdAt ? new Date(a.createdAt).toISOString().split("T")[0] : "",
+            expiresAt: a.endDate || "",
+            isActive: a.isActive !== undefined ? a.isActive : true,
+          }));
+          setter(mapped);
+          return;
+        }
+
+        // ✅ tasks mapping (stable)
+        if (module === "tasks") {
+          const mapped = list.map((t: any) => ({
+            id: String(t._id || t.id),
+            title: t.title || "",
+            description: t.description || "",
+            assignedTo: String(t.assignedTo?._id || t.assignedTo || ""),
+            assignedToName: t.assignedToName || t.assignedTo?.name || "",
+            assignedBy: String(t.assignedBy?._id || t.assignedBy || ""),
+            assignedByName: t.assignedByName || t.assignedBy?.name || "",
+            taskType: (t.taskType || "daily") as "daily" | "weekly",
+            status: (t.status || "pending") as "pending" | "in-progress" | "completed",
+            priority: (t.priority || "medium") as "low" | "medium" | "high",
+            dueDate: t.dueDate || "",
+            createdAt: t.createdAt
+              ? new Date(t.createdAt).toISOString().split("T")[0]
+              : new Date().toISOString().split("T")[0],
+            isTimerRunning: Boolean(t.isTimerRunning || false),
+            timerStartTime: t.timerStartTime || null,
+            totalTimeSpent: Number(t.totalTimeSpent || 0),
+          }));
+          setter(mapped);
+          return;
+        }
+
+        // attendance mapping
+        if (module === "attendance") {
+          console.log('🔄 DataContext - Raw attendance data:', list);
+          console.log('🔄 DataContext - Raw attendance data length:', list.length);
+          console.log('🔄 DataContext - Raw attendance data type:', typeof list);
+          const mapped = list.map((att: any) => {
+            // Calculate hours if not provided or is 0
+            let hours = Number(att.hours || 0);
+            if (hours === 0 && att.checkIn && att.checkOut) {
+              const [inHour, inMin] = att.checkIn.split(":").map(Number);
+              const [outHour, outMin] = att.checkOut.split(":").map(Number);
+
+              // Handle overnight shifts (checkOut < checkIn)
+              let totalMinutes = (outHour * 60 + outMin) - (inHour * 60 + inMin);
+              if (totalMinutes < 0) {
+                // Add 24 hours (1440 minutes) for overnight shifts
+                totalMinutes += 24 * 60;
+              }
+
+              hours = Math.max(0, totalMinutes / 60);
+            }
+
+            return {
+              id: String(att._id || att.id),
+              employeeId: String(att.employeeId?._id || att.employeeId || ""),
+              employeeName: att.employeeName || att.employeeId?.name || "",
+              date: att.date || "",
+              checkIn: att.checkIn || "",
+              checkOut: att.checkOut || "",
+              status: String(att.status || "present").toLowerCase(),
+              hours: hours,
+              notes: att.notes || "",
+            };
+          });
+          console.log('🔄 DataContext - Mapped attendance data:', mapped);
+          setter(mapped);
+          return;
+        }
+
+
+
+        // clockRecords mapping (same source)
+        if (module === "clockRecords") {
+          const mapped = list.map((att: any) => ({
+            id: String(att._id || att.id),
+            employeeId: String(att.employee?._id || att.employee || ""),
+            employeeName: att.employeeName || att.employee?.name || "",
+            date: att.date ? new Date(att.date).toISOString().split("T")[0] : "",
+            clockIn: att.clockIn || "",
+            clockOut: att.clockOut || "",
+            workHours: Number(att.workHours || 0),
+            notes: att.notes || "",
+          }));
+          setter(mapped);
+          return;
+        }
+
+        // absences mapping (leaves)
+        if (module === "absences") {
+          const mapped = list.map((leave: any) => ({
+            id: String(leave._id || leave.id),
+            employeeId: String(leave.employee?._id || leave.employee || ""),
+            employeeName: leave.employee?.name || leave.employeeName || "",
+            startDate: leave.startDate
+              ? new Date(leave.startDate).toISOString().split("T")[0]
+              : leave.fromDate
+                ? new Date(leave.fromDate).toISOString().split("T")[0]
+                : "",
+            endDate: leave.endDate
+              ? new Date(leave.endDate).toISOString().split("T")[0]
+              : leave.toDate
+                ? new Date(leave.toDate).toISOString().split("T")[0]
+                : "",
+            type: (leave.leaveType || "Other") as any,
+            reason: leave.reason || "",
+            status: (String(leave.status || "pending").toLowerCase() as any) as
+              | "pending"
+              | "excused"
+              | "unexcused",
+          }));
+          setter(mapped);
+          return;
+        }
+
+        // payrollEntries mapping
+        // Backend returns Mongo docs with _id and employeeId (ObjectId). Normalize for UI.
+        if (module === "payrollEntries") {
+          const mapped = list.map((p: any) => ({
+            id: String(p._id || p.id),
+            employeeId: String(p.employeeId?._id || p.employeeId || p.employee?._id || p.employee || ""),
+            employeeName: p.employeeName || p.employee?.name || "",
+            month: String(p.month || ""),
+            basicSalary: Number(p.basicSalary ?? 0),
+            allowances: Number(p.allowances ?? 0),
+            deductions: Number(p.deductions ?? 0),
+            netSalary: Number(p.netSalary ?? 0),
+            status: (String(p.status || "pending").toLowerCase() as any) as
+              | "pending"
+              | "processed"
+              | "paid",
+          }));
+
+          setter(mapped);
+          return;
+        }
+
+        setter(list.map(normalizeId));
+      } catch (err) {
+        console.error(`Error fetching ${module}:`, err);
+        setter(initial);
+      }
+    },
+    }, [user?.role]);
+
+// Listen for refresh events from components
+useEffect(() => {
+  const handleRefresh = () => {
+    fetchData("clockRecords", setClockRecords, initialClockRecords);
+  };
+
+  window.addEventListener('refreshClockData', handleRefresh);
+  return () => window.removeEventListener('refreshClockData', handleRefresh);
+}, [fetchData, setClockRecords, initialClockRecords]);
+
+/** ✅ IMPORTANT: refreshTasks define */
+const refreshTasks = useCallback(async () => {
+  await fetchData("tasks", setTasks, initialTasks);
+}, [fetchData]);
+
+/** initial load */
+useEffect(() => {
+  console.log('🔄 DataContext - Initial load started');
+  const modules = [
+    { key: "employees", setter: setEmployees, initial: initialEmployees },
+    { key: "departments", setter: setDepartments, initial: initialDepartments },
+    { key: "designations", setter: setDesignations, initial: initialDesignations },
+    { key: "attendance", setter: setAttendance, initial: initialAttendance },
+    { key: "shifts", setter: setShifts, initial: initialShifts },
+    { key: "leaveRequests", setter: setLeaveRequests, initial: initialLeaveRequests },
+    { key: "leaveTypes", setter: setLeaveTypes, initial: initialLeaveTypes },
+    { key: "holidays", setter: setHolidays, initial: initialHolidays },
+    { key: "birthdays", setter: setBirthdays, initial: initialBirthdays },
+    { key: "anniversaries", setter: setAnniversaries, initial: initialAnniversaries },
+    { key: "jobPostings", setter: setJobPostings, initial: initialJobPostings },
+    { key: "candidates", setter: setCandidates, initial: initialCandidates },
+    { key: "interviews", setter: setInterviews, initial: initialInterviews },
+    { key: "payrollEntries", setter: setPayrollEntries, initial: [] },
+    { key: "salaryComponents", setter: setSalaryComponents, initial: [] },
+    { key: "announcements", setter: setAnnouncements, initial: initialAnnouncements },
+    { key: "chatMessages", setter: setChatMessages, initial: initialChatMessages },
+    { key: "clients", setter: setClients, initial: initialClients },
+    { key: "clockRecords", setter: setClockRecords, initial: initialClockRecords },
+    { key: "absences", setter: setAbsences, initial: initialAbsences },
+  ];
+
+  modules.forEach((m) => {
+    console.log(`🔄 DataContext - Fetching ${m.key}`);
+    fetchData(m.key, m.setter, m.initial);
+  });
+}, [fetchData]);
+
+/** -------------------- CRUD (keep your logic + stable refresh) -------------------- */
+
+const addEmployee = (employee: any) => {
+  (async () => {
+    const departmentId = employee.departmentId;
+    const designationId = employee.designationId;
+
+    if (!isValidObjectId(departmentId)) throw new Error("Valid Department is required");
+    if (!isValidObjectId(designationId)) throw new Error("Valid Designation is required");
+
+    const payload: any = {
+      name: employee.name?.trim(),
+      email: employee.email?.trim()?.toLowerCase(),
+      phone: employee.phone?.trim() || "",
+
+      departmentId,      // ✅ IMPORTANT
+      designationId,     // ✅ IMPORTANT
+
+      joiningDate: employee.joiningDate,
+      status: capitalizeStatus(employee.status) || "Active",
+      salary: employee.salary || 0,
+      role: employee.role || "Employee",
+      avatar: employee.avatar || "",
+      address: employee.address || "",
+      bloodGroup: employee.bloodGroup || "",
+      emergencyContact: employee.emergencyContact || "",
+    };
+
+    if (!payload.name) throw new Error("Employee name is required");
+    if (!payload.email) throw new Error("Employee email is required");
+
+    const res = await api.post<any>(endpointMap.employees, payload);
+
+    // ✅ agar backend {success, data} return karta ho:
+    const createdEmp = res?.data?.data ?? res?.data ?? res;
+
+    setEmployees((prev) => [normalizeId<Employee>(createdEmp), ...prev]);
+  })().catch((err) => console.error("addEmployee failed:", err?.response?.data || err));
+};
+
+const updateEmployee = (id: string, employee: any) => {
+  (async () => {
+    const departmentId = employee.departmentId;
+    const designationId = employee.designationId;
+
+    if (!isValidObjectId(departmentId)) throw new Error("Valid Department is required");
+    if (!isValidObjectId(designationId)) throw new Error("Valid Designation is required");
+
+    const payload: any = {
+      name: employee.name?.trim(),
+      email: employee.email?.trim()?.toLowerCase(),
+      phone: employee.phone?.trim() || "",
+      profileImage: employee.profileImage || "",
+
+      departmentId,      // ✅ IMPORTANT
+      designationId,     // ✅ IMPORTANT
+
+      joiningDate: employee.joiningDate,
+      status: capitalizeStatus(employee.status) || "Active",
+      salary: employee.salary || 0,
+      role: employee.role || "Employee",
+      avatar: employee.avatar || "",
+      address: employee.address || "",
+      bloodGroup: employee.bloodGroup || "",
+      emergencyContact: employee.emergencyContact || "",
+    };
+
+    const res = await api.put<any>(`${endpointMap.employees}/${id}`, payload);
+    const updatedEmp = res?.data?.data ?? res?.data ?? res;
+
+    setEmployees((prev) =>
+      prev.map((e) => (e.id === id ? normalizeId<Employee>({ ...e, ...updatedEmp }) : e))
+    );
+  })().catch((err) => console.error("updateEmployee failed:", err?.response?.data || err));
+};
+
+
+const deleteEmployee = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.employees}/${id}`);
+    setEmployees((prev) => prev.filter((e) => e.id !== id));
+  })().catch((err) => console.error("deleteEmployee failed:", err?.response?.data || err));
+};
+
+const addDepartment = (department: any) => {
+  (async () => {
+    const payload = {
+      name: department.name?.trim(),
+      description: department.description?.trim() || "",
+      headOfDepartment: department.headOfDepartment?.trim(), // ✅ REQUIRED
+      employeeCount: Number(department.employeeCount || 0),
+    };
+    console.log("DataContext payload:", payload);
+
+
+    if (!payload.name) throw new Error("Department name is required");
+    if (!payload.headOfDepartment) throw new Error("Head of Department is required");
+
+    const res = await api.post(endpointMap.departments, payload);
+    const created = res?.data?.data ?? res?.data ?? res;
+
+    setDepartments((prev) => [normalizeId(created), ...prev]);
+  })().catch((err) => console.error("addDepartment failed:", err?.response?.data || err));
+};
+
+
+const updateDepartment = (id: string, department: any) => {
+  (async () => {
+    const payload = {
+      name: String(department?.name || "").trim(),
+      description: String(department?.description || "").trim(),
+      headOfDepartment: String(department?.headOfDepartment || "").trim(),
+      employeeCount: Number(department?.employeeCount ?? 0),
+    };
+
+    await api.put<any>(`${endpointMap.departments}/${id}`, payload);
+    await fetchData("departments", setDepartments, initialDepartments);
+  })().catch((err) => console.error("updateDepartment failed:", err?.response?.data || err));
+};
+
+const deleteDepartment = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.departments}/${id}`);
+    await fetchData("departments", setDepartments, initialDepartments);
+  })().catch((err) => console.error("deleteDepartment failed:", err?.response?.data || err));
+};
+
+const addDesignation = (designation: Omit<Designation, "id">) => {
+  (async () => {
+    const name = (designation as any).name || (designation as any).title; // backend wants name
+    const code =
+      (designation as any).code ||
+      name?.replace(/\s+/g, "_").toUpperCase().substring(0, 10) ||
+      `DESIG_${Date.now()}`;
+
+    const departmentId =
+      (designation as any).departmentId || (designation as any).department;
+
+    if (!name?.trim()) throw new Error("Name is required for designation");
+    if (!isValidObjectId(departmentId)) throw new Error("Valid Department is required");
+
+    const payload = {
+      name: name.trim(),                 // ✅ REQUIRED (backend)
+      code: code.trim(),
+      departmentId,                      // ✅ REQUIRED (backend)
+      level: (designation as any).level || "Entry",
+      description: (designation as any).description || "",
+    };
+
+    await api.post<any>(endpointMap.designations, payload);
+    await fetchData("designations", setDesignations, initialDesignations);
+  })().catch((err) => console.error("addDesignation failed:", err?.response?.data || err));
+};
+
+
+const updateDesignation = (id: string, designation: Partial<Designation>) => {
+  (async () => {
+    const departmentId = (designation as any).departmentId || (designation as any).department;
+
+    const payload: any = {
+      ...(designation as any),
+    };
+
+    if ((designation as any).title && !(designation as any).name) {
+      payload.name = String((designation as any).title).trim();
+      delete payload.title;
+    }
+
+    if (departmentId) {
+      payload.departmentId = departmentId;
+      delete payload.department;
+    }
+
+    await api.put<any>(`${endpointMap.designations}/${id}`, payload);
+    await fetchData("designations", setDesignations, initialDesignations);
+  })().catch((err) => console.error("updateDesignation failed:", err?.response?.data || err));
+};
+
+
+const deleteDesignation = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.designations}/${id}`);
+    await fetchData("designations", setDesignations, initialDesignations);
+  })().catch((err) => console.error("deleteDesignation failed:", err?.response?.data || err));
+};
+
+
+const addAttendance = (attendanceEntry: any) => {
+  (async () => {
+    const checkIn = attendanceEntry.checkIn;
+    const checkOut = attendanceEntry.checkOut;
+
+    if (!attendanceEntry.employeeId) throw new Error("employeeId is required");
+    if (!attendanceEntry.date) throw new Error("date is required");
+    if (!checkIn) throw new Error("checkIn is required");
+
+    let hours = 0;
+    if (checkIn && checkOut) {
+      const [inHour, inMin] = checkIn.split(":").map(Number);
+      const [outHour, outMin] = checkOut.split(":").map(Number);
+
+      // Handle overnight shifts (checkOut < checkIn)
+      let totalMinutes = (outHour * 60 + outMin) - (inHour * 60 + inMin);
+      if (totalMinutes < 0) {
+        // Add 24 hours (1440 minutes) for overnight shifts
+        totalMinutes += 24 * 60;
+      }
+
+      hours = Math.max(0, totalMinutes / 60);
+    }
+
+    const payload: any = {
+      employeeId: attendanceEntry.employeeId,
+      employeeName: attendanceEntry.employeeName || "",
+      date: attendanceEntry.date,
+      checkIn,
+      checkOut: checkOut || undefined,
+      status: mapStatus(attendanceEntry.status),
+      hours, // ✅ IMPORTANT (backend expects hours)
+      notes: attendanceEntry.notes || "",
+    };
+
+    Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+
+    await api.post<any>(endpointMap.attendance, payload);
+    // Force refresh attendance data
+    await fetchData("attendance", setAttendance, initialAttendance);
+
+    // Additional force refresh to ensure UI updates
+    setTimeout(() => {
+      fetchData("attendance", setAttendance, initialAttendance);
+    }, 100);
+  })().catch((err) => {
+    console.error("addAttendance failed:", err?.response?.data || err);
+
+    // Handle duplicate attendance error
+    if (err?.response?.status === 409) {
+      const errorMessage = err?.response?.data?.message || "Attendance already exists for this employee on this date";
+      // Show user-friendly message
+      if (typeof window !== 'undefined' && window.alert) {
+        alert(`⚠️ ${errorMessage}`);
+      } else {
+        console.warn('Duplicate attendance:', errorMessage);
+      }
+    } else {
+      const errorMessage = err?.response?.data?.message || err.message || "Failed to add attendance";
+      if (typeof window !== 'undefined' && window.alert) {
+        alert(`❌ Error: ${errorMessage}`);
+      } else {
+        console.error('Attendance error:', errorMessage);
+      }
+    }
+  });
+};
+
+
+
+
+const updateAttendance = (id: string, attendanceEntry: any) => {
+  (async () => {
+    const payload: any = {
+      employeeId: attendanceEntry.employeeId,
+      employeeName: attendanceEntry.employeeName,
+      date: attendanceEntry.date,
+      checkIn: attendanceEntry.checkIn,
+      checkOut: attendanceEntry.checkOut,
+      status: mapStatus(attendanceEntry.status),
+      hours: attendanceEntry.hours, // ✅ IMPORTANT
+      notes: attendanceEntry.notes,
+    };
+
+    Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+
+    await api.put<any>(`${endpointMap.attendance}/${id}`, payload);
+    await fetchData("attendance", setAttendance, initialAttendance);
+  })().catch((err) => console.error("updateAttendance failed:", err?.response?.data || err));
+};
+
+
+
+const deleteAttendance = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.attendance}/${id}`);
+    await fetchData("attendance", setAttendance, initialAttendance);
+  })().catch((err) => console.error("deleteAttendance failed:", err?.response?.data || err));
+};
+
+const addShift = (shift: Omit<Shift, "id">) => {
+  (async () => {
+    await api.post<any>(endpointMap.shifts, shift);
+    await fetchData("shifts", setShifts, initialShifts);
+  })().catch((err) => console.error("addShift failed:", err?.response?.data || err));
+};
+
+const updateShift = (id: string, shift: Partial<Shift>) => {
+  (async () => {
+    await api.put<any>(`${endpointMap.shifts}/${id}`, shift);
+    await fetchData("shifts", setShifts, initialShifts);
+  })().catch((err) => console.error("updateShift failed:", err?.response?.data || err));
+};
+
+const deleteShift = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.shifts}/${id}`);
+    await fetchData("shifts", setShifts, initialShifts);
+  })().catch((err) => console.error("deleteShift failed:", err?.response?.data || err));
+};
+
+const addLeaveRequest = (request: any) => {
+  (async () => {
+    // Map frontend fields to backend model
+    const payload = {
+      employeeId: request.employeeId || request.employee,
+      employeeName: request.employeeName || "",
+      leaveTypeId: request.leaveTypeId || request.leaveType,
+      leaveTypeName: "", // Will be populated by backend
+      fromDate: request.fromDate || request.startDate,
+      toDate: request.toDate || request.endDate,
+      reason: request.reason || "",
+      status: "pending", // Must be lowercase to match backend enum
+      createdBy: request.employeeId || "",
+    };
+
+    // Validation
+    if (!payload.employeeId) {
+      alert("Employee is required");
+      return;
+    }
+    if (!payload.leaveTypeId) {
+      alert("Leave type is required");
+      return;
+    }
+    if (!payload.fromDate || !payload.toDate) {
+      alert("Start date and end date are required");
+      return;
+    }
+
+    console.log('🔄 Adding leave request with payload:', payload);
+    const response = await api.post(endpointMap.leaveRequests, payload);
+    console.log('✅ Leave request created:', response.data);
+    await fetchData("leaveRequests", setLeaveRequests, initialLeaveRequests);
+
+    // Show success message
+    alert("Leave request submitted successfully!");
+  })().catch((err) => {
+    console.error("addLeaveRequest failed:", err?.response?.data || err);
+    const errorMessage = err?.response?.data?.message || err.message || "Failed to submit leave request";
+    alert(`Error: ${errorMessage}`);
+  });
+};
+
+const updateLeaveRequest = (id: string, request: Partial<LeaveRequest>) => {
+  (async () => {
+    const payload: any = {};
+    if (request.status) payload.status = request.status.toLowerCase(); // Keep lowercase to match backend enum
+    if (request.reason) payload.reason = request.reason;
+
+    console.log('🔄 Updating leave request with payload:', payload);
+    await api.put(`${endpointMap.leaveRequests}/${id}`, payload);
+    await fetchData("leaveRequests", setLeaveRequests, initialLeaveRequests);
+  })().catch((err) => {
+    console.error("updateLeaveRequest failed:", err?.response?.data || err);
+    alert(`Failed to update leave request: ${err?.response?.data?.message || err.message}`);
+  });
+};
+
+const deleteLeaveRequest = (id: string) => {
+  (async () => {
+    if (!window.confirm('Are you sure you want to delete this leave request?')) {
+      return;
+    }
+
+    console.log('🔄 Deleting leave request with id:', id);
+    await api.delete(`${endpointMap.leaveRequests}/${id}`);
+    await fetchData("leaveRequests", setLeaveRequests, initialLeaveRequests);
+  })().catch((err) => {
+    console.error("deleteLeaveRequest failed:", err?.response?.data || err);
+    alert(`Failed to delete leave request: ${err?.response?.data?.message || err.message}`);
+  });
+};
+
+const addLeaveType = (leaveType: Omit<LeaveType, "id">) => {
+  (async () => {
+    // Generate code from name if not provided
+    const name = (leaveType as any).name?.trim();
+    let code = (leaveType as any).code?.trim();
+
+    if (!code && name) {
+      // Generate code from first letters of each word
+      code = name.split(' ')
+        .map((word: string) => word.charAt(0).toUpperCase())
+        .join('')
+        .substring(0, 4)
+        .toUpperCase();
+    }
+
+    const payload: LeaveTypeCreatePayload = {
+      name: name,
+      code: code,
+      description: (leaveType as any).description,
+      isPaid: (leaveType as any).isPaid,
+      maxDays: (leaveType as any).maxDays,
+    };
+
+    if (!payload.name || !payload.code) {
+      console.error("LeaveType validation failed:", payload);
+      alert("Name and Code are required");
+      return;
+    }
+
+    console.log('🔄 Adding leave type with payload:', payload);
+    await api.post(endpointMap.leaveTypes, payload);
+    await fetchData("leaveTypes", setLeaveTypes, initialLeaveTypes);
+  })().catch((err) => {
+    console.error("addLeaveType failed:", err?.response?.data || err);
+    alert(`Failed to add leave type: ${err?.response?.data?.message || err.message}`);
+  });
+};
+
+type LeaveTypeCreatePayload = {
+  name: string;
+  code: string;
+  description?: string;
+  isPaid?: boolean;
+  maxDays?: number;
+};
+
+
+
+type LeaveTypeCreatePayload = {
+  name: string;
+  code: string;
+  description?: string;
+  isPaid?: boolean;
+  maxDays?: number;
+};
+
+const updateLeaveType = (id: string, leaveType: Partial<LeaveType>) => {
+  (async () => {
+    // Validate required fields
+    if (!leaveType.name || !(leaveType.name as string).trim()) {
+      alert("Name is required");
+      return;
+    }
+
+    if (!(leaveType as any).code || !(leaveType as any).code.trim()) {
+      alert("Code is required");
+      return;
+    }
+
+    const payload: any = {
+      name: (leaveType.name as string).trim(),
+      code: (leaveType as any).code.trim().toUpperCase(),
+      description: leaveType.description,
+      isPaid: (leaveType as any).isPaid,
+      maxDays: (leaveType as any).maxDays,
+    };
+
+    console.log('🔄 Updating leave type with payload:', payload);
+    const response = await api.put(`${endpointMap.leaveTypes}/${id}`, payload);
+    console.log('✅ Leave type updated:', response.data);
+    await fetchData("leaveTypes", setLeaveTypes, initialLeaveTypes);
+
+    // Show success message
+    alert("Leave type updated successfully!");
+  })().catch((err) => {
+    console.error("updateLeaveType failed:", err?.response?.data || err);
+    const errorMessage = err?.response?.data?.message || err.message || "Failed to update leave type";
+    alert(`Error: ${errorMessage}`);
+  });
+};
+
+
+
+
+const deleteLeaveType = (id: string) => {
+  (async () => {
+    if (!window.confirm('Are you sure you want to delete this leave type? This action cannot be undone.')) {
+      return;
+    }
+
+    console.log('🔄 Deleting leave type with id:', id);
+    const response = await api.delete(`${endpointMap.leaveTypes}/${id}`);
+    console.log('✅ Leave type deleted:', response.data);
+    await fetchData("leaveTypes", setLeaveTypes, initialLeaveTypes);
+
+    // Show success message
+    alert("Leave type deleted successfully!");
+  })().catch((err) => {
+    console.error("deleteLeaveType failed:", err?.response?.data || err);
+    const errorMessage = err?.response?.data?.message || err.message || "Failed to delete leave type";
+    alert(`Error: ${errorMessage}`);
+  });
+};
+
+const addHoliday = (holiday: Omit<Holiday, "id">) => {
+  (async () => {
+    const payload = {
+      title: holiday.name,
+      type: "holiday",
+      date: holiday.date,
+      description: holiday.description || "",
+      isActive: true,
+    };
+    await api.post<any>(endpointMap.celebrations, payload);
+    await fetchData("holidays", setHolidays, initialHolidays);
+  })().catch((err) => console.error("addHoliday failed:", err?.response?.data || err));
+};
+
+const updateHoliday = (id: string, holiday: Partial<Holiday>) => {
+  (async () => {
+    const payload = {
+      title: holiday.name,
+      date: holiday.date,
+      description: holiday.description,
+    };
+    await api.put<any>(`${endpointMap.celebrations}/${id}`, payload);
+    await fetchData("holidays", setHolidays, initialHolidays);
+  })().catch((err) => console.error("updateHoliday failed:", err?.response?.data || err));
+};
+
+const deleteHoliday = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.celebrations}/${id}`);
+    await fetchData("holidays", setHolidays, initialHolidays);
+  })().catch((err) => console.error("deleteHoliday failed:", err?.response?.data || err));
+};
+
+const addBirthday = (birthday: Omit<Birthday, "id">) => {
+  (async () => {
+    const payload = {
+      title: `Birthday - ${birthday.employeeName}`,
+      type: "birthday",
+      date: birthday.date,
+      description: `${birthday.employeeName}'s birthday`,
+      employeeId: birthday.employeeId,
+      isActive: true,
+    };
+    await api.post<any>(endpointMap.celebrations, payload);
+    await fetchData("birthdays", setBirthdays, initialBirthdays);
+  })().catch((err) => console.error("addBirthday failed:", err?.response?.data || err));
+};
+
+const updateBirthday = (id: string, birthday: Partial<Birthday>) => {
+  (async () => {
+    const payload: any = {
+      title: birthday.employeeName ? `Birthday - ${birthday.employeeName}` : undefined,
+      date: birthday.date,
+      employeeId: birthday.employeeId,
+    };
+    Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+    await api.put<any>(`${endpointMap.celebrations}/${id}`, payload);
+    await fetchData("birthdays", setBirthdays, initialBirthdays);
+  })().catch((err) => console.error("updateBirthday failed:", err?.response?.data || err));
+};
+
+const deleteBirthday = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.celebrations}/${id}`);
+    await fetchData("birthdays", setBirthdays, initialBirthdays);
+  })().catch((err) => console.error("deleteBirthday failed:", err?.response?.data || err));
+};
+
+const addJobPosting = (job: Omit<JobPosting, "id">) => {
+  (async () => {
+    await api.post<any>(endpointMap.jobPostings, job);
+    await fetchData("jobPostings", setJobPostings, initialJobPostings);
+  })().catch((err) => console.error("addJobPosting failed:", err?.response?.data || err));
+};
+
+const updateJobPosting = (id: string, job: Partial<JobPosting>) => {
+  (async () => {
+    await api.put<any>(`${endpointMap.jobPostings}/${id}`, job);
+    await fetchData("jobPostings", setJobPostings, initialJobPostings);
+  })().catch((err) => console.error("updateJobPosting failed:", err?.response?.data || err));
+};
+
+const deleteJobPosting = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.jobPostings}/${id}`);
+    await fetchData("jobPostings", setJobPostings, initialJobPostings);
+  })().catch((err) => console.error("deleteJobPosting failed:", err?.response?.data || err));
+};
+
+const addCandidate = (candidate: Omit<Candidate, "id">) => {
+  (async () => {
+    await api.post<any>(endpointMap.candidates, candidate);
+    await fetchData("candidates", setCandidates, initialCandidates);
+  })().catch((err) => console.error("addCandidate failed:", err?.response?.data || err));
+};
+
+const updateCandidate = (id: string, candidate: Partial<Candidate>) => {
+  (async () => {
+    await api.put<any>(`${endpointMap.candidates}/${id}`, candidate);
+    await fetchData("candidates", setCandidates, initialCandidates);
+  })().catch((err) => console.error("updateCandidate failed:", err?.response?.data || err));
+};
+
+const deleteCandidate = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.candidates}/${id}`);
+    await fetchData("candidates", setCandidates, initialCandidates);
+  })().catch((err) => console.error("deleteCandidate failed:", err?.response?.data || err));
+};
+
+const addInterview = (interview: Omit<Interview, "id">) => {
+  (async () => {
+    await api.post<any>(endpointMap.interviews, interview);
+    await fetchData("interviews", setInterviews, initialInterviews);
+  })().catch((err) => console.error("addInterview failed:", err?.response?.data || err));
+};
+
+const updateInterview = (id: string, interview: Partial<Interview>) => {
+  (async () => {
+    await api.put<any>(`${endpointMap.interviews}/${id}`, interview);
+    await fetchData("interviews", setInterviews, initialInterviews);
+  })().catch((err) => console.error("updateInterview failed:", err?.response?.data || err));
+};
+
+const deleteInterview = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.interviews}/${id}`);
+    await fetchData("interviews", setInterviews, initialInterviews);
+  })().catch((err) => console.error("deleteInterview failed:", err?.response?.data || err));
+};
+
+// DataContext.tsx (inside provider)
+let payrollSubmitting = false;
+
+const addPayrollEntry = async (entry: Omit<PayrollEntry, "id">) => {
+  if (payrollSubmitting) return false; // prevent double request
+  payrollSubmitting = true;
+
+  try {
+    await api.post<any>(endpointMap.payrollEntries, entry);
+    await fetchData("payrollEntries", setPayrollEntries, []);
+    return true;
+  } catch (err: any) {
+    if (err?.response?.status === 409) {
+      // already exists — refresh and return false
+      await fetchData("payrollEntries", setPayrollEntries, []);
+      return false;
+    }
+    console.error("addPayrollEntry failed:", err?.response?.data || err);
+    throw err;
+  } finally {
+    payrollSubmitting = false;
+  }
+};
+
+
+
+const updatePayrollEntry = (id: string, entry: Partial<PayrollEntry>) => {
+  (async () => {
+    await api.put<any>(`${endpointMap.payrollEntries}/${id}`, entry);
+    await fetchData("payrollEntries", setPayrollEntries, []);
+  })().catch((err) => console.error("updatePayrollEntry failed:", err?.response?.data || err));
+};
+
+const deletePayrollEntry = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.payrollEntries}/${id}`);
+    await fetchData("payrollEntries", setPayrollEntries, []);
+  })().catch((err) => console.error("deletePayrollEntry failed:", err?.response?.data || err));
+};
+
+const addSalaryComponent = (component: Omit<SalaryComponent, "id">) => {
+  (async () => {
+    await api.post<any>(endpointMap.salaryComponents, component);
+    await fetchData("salaryComponents", setSalaryComponents, []);
+  })().catch((err) => console.error("addSalaryComponent failed:", err?.response?.data || err));
+};
+
+const updateSalaryComponent = (id: string, component: Partial<SalaryComponent>) => {
+  (async () => {
+    await api.put<any>(`${endpointMap.salaryComponents}/${id}`, component);
+    await fetchData("salaryComponents", setSalaryComponents, []);
+  })().catch((err) => console.error("updateSalaryComponent failed:", err?.response?.data || err));
+};
+
+const deleteSalaryComponent = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.salaryComponents}/${id}`);
+    await fetchData("salaryComponents", setSalaryComponents, []);
+  })().catch((err) => console.error("deleteSalaryComponent failed:", err?.response?.data || err));
+};
+
+const addAnnouncement = async (announcement: Omit<Announcement, "id">) => {
+  console.log('🚀 addAnnouncement called with:', announcement);
+
+  // Check user authentication and role
+  const currentUser = localStorage.getItem("currentUser");
+  const token = localStorage.getItem("token");
+
+  console.log('👤 Current user:', currentUser);
+  console.log('🔐 Token exists:', !!token);
+
+  if (!token) {
+    console.error('❌ No authentication token found');
+    alert('Authentication required. Please log in again.');
+    throw new Error('Authentication required');
+  }
+
+  let userId = "";
+  if (currentUser) {
+    const user = JSON.parse(currentUser);
+    console.log('👥 User role:', user.role);
+    userId = user.id || user._id;
+    console.log('🆔 User ID:', userId);
+
+    if (user.role !== 'admin' && user.role !== 'hr') {
+      console.error('🚫 User role not authorized for announcements:', user.role);
+      alert('Permission denied. Only Admin and HR users can create announcements.');
+      throw new Error('Permission denied');
+    }
+  }
+
+  const categoryMap: Record<string, string> = {
+    "company-wide": "general",
+    department: "department",
+    "hr-updates": "hr",
+    events: "event",
+    alerts: "alert",
+    achievements: "achievement",
+    policy: "policy",
+  };
+
+  const payload = {
+    title: announcement.title,
+    content: announcement.content,
+    body: announcement.content, // Also include 'body' for compatibility
+    type: categoryMap[announcement.category] || "general",
+    audience: announcement.category === 'company-wide' ? 'all' : announcement.category, // Set audience field
+    department: announcement.department || "",
+    priority: announcement.priority || "medium",
+    startDate: announcement.createdAt || new Date().toISOString().split("T")[0],
+    endDate: announcement.expiresAt || "",
+    isActive: true,
+    createdBy: userId, // Required field
+  };
+
+  console.log('📤 Sending announcement payload:', payload);
+
+  try {
+    const response = await api.post<any>(endpointMap.announcements, payload);
+    console.log('✅ Announcement created successfully:', response);
+    await fetchData("announcements", setAnnouncements, initialAnnouncements);
+    return response; // Return response for Promise chaining
+  } catch (err: any) {
+    console.error("❌ addAnnouncement failed:", err);
+
+    // More detailed error handling
+    if (err?.response?.status === 401) {
+      console.error('🔐 Authentication error - user not logged in or token expired');
+      alert('Authentication required. Please log in again.');
+    } else if (err?.response?.status === 403) {
+      console.error('🚫 Permission denied - user role not authorized');
+      alert('Permission denied. Only Admin and HR users can create announcements.');
+    } else if (err?.response?.status === 400) {
+      const errorMessage = err?.response?.data?.message || 'Invalid data provided';
+      console.error('📝 Validation error:', errorMessage);
+      alert(`Validation error: ${errorMessage}`);
+    } else {
+      const errorMessage = err?.response?.data?.message || err?.message || 'Unknown error occurred';
+      console.error('💥 Unexpected error:', errorMessage);
+      alert(`Failed to create announcement: ${errorMessage}`);
+    }
+
+    throw err; // Re-throw to maintain error propagation
+  }
+};
+
+const updateAnnouncement = async (id: string, announcement: Partial<Announcement>) => {
+  console.log('=== COMPREHENSIVE DEBUG START ===');
+  console.log('UPDATE ID:', id);
+  console.log('FULL ANNOUNCEMENT DATA:', JSON.stringify(announcement, null, 2));
+  console.log('FIELDS PRESENT:', Object.keys(announcement));
+  console.log('CATEGORY FIELD EXISTS:', 'category' in announcement);
+  console.log('CATEGORY VALUE:', announcement.category);
+  console.log('CATEGORY TYPE:', typeof announcement.category);
+  console.log('PRIORITY FIELD EXISTS:', 'priority' in announcement);
+  console.log('PRIORITY VALUE:', announcement.priority);
+  console.log('PRIORITY TYPE:', typeof announcement.priority);
+  console.log('=== DEBUG INFO END ===');
+
+  // Create a clean payload without problematic fields
+  const payload: any = {};
+
+  // Handle all fields that might be updated - include them even if falsy
+  if ('title' in announcement) payload.title = announcement.title;
+  if ('content' in announcement) payload.content = announcement.content;
+  if ('body' in announcement) payload.body = announcement.body;
+
+  // Handle category with proper mapping
+  if ('category' in announcement && announcement.category !== undefined) {
+    const categoryMap: Record<string, string> = {
+      "company-wide": "general",
+      department: "department",
+      "hr-updates": "hr",
+      events: "event",
+      alerts: "alert",
+      achievements: "achievement",
+      policy: "policy",
+    };
+    payload.type = categoryMap[announcement.category] || "general";
+    // Also update audience field for better categorization
+    payload.audience = announcement.category === 'company-wide' ? 'all' :
+      announcement.category === 'hr-updates' ? 'hr' :
+        'employee';
+    console.log('✅ Adding category mapping - type:', payload.type, 'audience:', payload.audience);
+  }
+
+  if ('department' in announcement) payload.department = announcement.department;
+  if ('priority' in announcement) {
+    payload.priority = announcement.priority;
+    console.log('✅ Adding priority to payload:', announcement.priority);
+  }
+
+  // Handle date fields - include them even if they're empty strings
+  if ('createdAt' in announcement) {
+    payload.startDate = announcement.createdAt || null;
+    console.log('✅ Adding startDate to payload:', announcement.createdAt);
+  }
+  if ('expiresAt' in announcement) {
+    payload.endDate = announcement.expiresAt || null;  // Always include expiresAt
+    console.log('✅ Adding endDate to payload:', announcement.expiresAt);
+  }
+  if ('isActive' in announcement) payload.isActive = announcement.isActive;
+
+  console.log('=== PAYLOAD DEBUG ===');
+  console.log('FINAL PAYLOAD BEING SENT:', JSON.stringify(payload, null, 2));
+  console.log('=====================');
+
+  try {
+    const response = await api.put<any>(`${endpointMap.announcements}/${id}`, payload);
+    console.log('✅ Announcement updated successfully:', response);
+    await fetchData("announcements", setAnnouncements, initialAnnouncements);
+    return response; // Return the response for Promise chaining
+  } catch (err: any) {
+    console.error("❌ updateAnnouncement failed:", err);
+
+    // More detailed error handling
+    if (err?.response?.status === 401) {
+      console.error('🔐 Authentication error - user not logged in or token expired');
+      alert('Authentication required. Please log in again.');
+    } else if (err?.response?.status === 403) {
+      console.error('🚫 Permission denied - user role not authorized');
+      alert('Permission denied. Only Admin and HR users can update announcements.');
+    } else if (err?.response?.status === 400) {
+      const errorMessage = err?.response?.data?.message || 'Invalid data provided';
+      console.error('📝 Validation error:', errorMessage);
+      alert(`Validation error: ${errorMessage}`);
+    } else if (err?.response?.status === 404) {
+      console.error('🔍 Announcement not found');
+      alert('Announcement not found. It may have been deleted.');
+    } else {
+      const errorMessage = err?.response?.data?.message || err?.message || 'Unknown error occurred';
+      console.error('💥 Unexpected error:', errorMessage);
+      alert(`Failed to update announcement: ${errorMessage}`);
+    }
+
+    throw err; // Re-throw to maintain error propagation
+  }
+};
+
+const deleteAnnouncement = async (id: string) => {
+  console.log('🗑️ deleteAnnouncement called with ID:', id);
+
+  try {
+    const response = await api.delete<any>(`${endpointMap.announcements}/${id}`);
+    console.log('✅ Announcement deleted successfully:', response);
+    await fetchData("announcements", setAnnouncements, initialAnnouncements);
+    return response; // Return the response for Promise chaining
+  } catch (err: any) {
+    console.error("❌ deleteAnnouncement failed:", err);
+
+    // More detailed error handling
+    if (err?.response?.status === 401) {
+      console.error('🔐 Authentication error - user not logged in or token expired');
+      alert('Authentication required. Please log in again.');
+    } else if (err?.response?.status === 403) {
+      console.error('🚫 Permission denied - user role not authorized');
+      alert('Permission denied. Only Admin and HR users can delete announcements.');
+    } else if (err?.response?.status === 404) {
+      console.error('🔍 Announcement not found');
+      alert('Announcement not found. It may have already been deleted.');
+    } else {
+      const errorMessage = err?.response?.data?.message || err?.message || 'Unknown error occurred';
+      console.error('💥 Unexpected error:', errorMessage);
+      alert(`Failed to delete announcement: ${errorMessage}`);
+    }
+
+    throw err; // Re-throw to maintain error propagation
+  }
+};
+
+
+const refreshChat = useCallback(async () => {
+  try {
+    const res = await api.get("/chat", { params: { limit: 200 } });
+
+    console.log("CHAT RAW:", res.data);
+
+    // ✅ FIX HERE
+    const list = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res.data?.data)
+        ? res.data.data
+        : [];
+
+    console.log("CHAT LIST:", list);
+
+    setChatMessages(list);
+  } catch (err) {
+    console.error("CHAT GET FAILED:", err);
+  }
+}, []);
+
+
+const addChatMessage = useCallback(async (payload) => {
+  await whatchatService.create(payload);
+  await refreshChat();
+}, [refreshChat]);
+
+// OPTIONAL (agar backend me put/delete banaya nahi hai to inko remove kar do)
+const updateChatMessage = useCallback(
+  async (id: string, patch: any) => {
+    await api.put(`${endpointMap.chat}/${id}`, patch); // PUT /chat/:id
+    await refreshChat();
+  },
+  [refreshChat]
+);
+
+const deleteChatMessage = useCallback(
+  async (id: string) => {
+    await api.delete(`${endpointMap.chat}/${id}`); // DELETE /chat/:id
+    await refreshChat();
+  },
+  [refreshChat]
+);
+
+
+/** ✅ TASK CRUD (stable + uses refreshTasks) */
+const getTasks = useCallback(async () => {
+  try {
+    const data = await taskService.getAll();
+
+    const normalized = (Array.isArray(data) ? data : []).map((t: any) => ({
+      ...t,
+      id: t._id || t.id,
+    }));
+
+    setTasks(normalized);
+  } catch (e: any) {
+    console.error("getTasks error:", e?.response?.data || e);
+    setTasks([]);
+  }
+}, [user]); // ✅ IMPORTANT: user changes -> re-run possible
+
+useEffect(() => {
+  // ✅ user/login ready hone ke baad hi tasks load
+  if (!user) return;
+  refreshChat();
+  getTasks();
+}, [user, getTasks, refreshChat]);
+
+
+useEffect(() => {
+  getTasks();
+}, []);
+
+const addTask = async (payload: any) => {
+  try {
+    const created = await taskService.create(payload);
+
+    if (created) {
+      const normalized = { ...created, id: created._id || created.id };
+
+      // ✅ INSTANT UI UPDATE
+      setTasks((prev) => [normalized, ...prev]);
+    }
+
+    // ✅ also refetch to keep perfect sync
+    await getTasks();
+
+    return created;
+  } catch (e: any) {
+    console.error("addTask failed:", e?.response?.data || e);
+    throw e;
+  }
+};
+
+
+
+const updateTask = async (id: string, payload: any) => {
+  const updated = await taskService.update(id, payload); // ✅ PUT /tasks/:id
+  await getTasks(); // ✅ refresh
+  return updated;
+};
+
+
+const deleteTask = async (id: string) => {
+  await taskService.remove(id);
+  setTasks((prev) => prev.filter((t) => (t._id || t.id) !== id));
+  await getTasks();
+};
+
+/** Clients */
+const addClient = (client: any) => {
+  (async () => {
+    const payload = {
+      company: client.company,
+      contactPerson: client.contactPerson,
+      email: client.email,
+      phone: client.phone,
+      industry: client.industry ?? "general",
+      projects: client.projects ?? 0,
+      address: client.address ?? "",
+      status: client.status ?? "active",
+    };
+    await api.post(endpointMap.clients, payload);
+    await fetchData("clients", setClients, initialClients);
+  })().catch((err) => console.error("addClient failed:", err?.response?.data || err));
+};
+
+const updateClient = (id: string, client: any) => {
+  (async () => {
+    const payload = {
+      company: client.company,
+      contactPerson: client.contactPerson,
+      email: client.email,
+      phone: client.phone,
+      industry: client.industry ?? "general",
+      projects: client.projects ?? 0,
+      address: client.address ?? "",
+      status: client.status ?? "active",
+    };
+    await api.put(`${endpointMap.clients}/${id}`, payload);
+    await fetchData("clients", setClients, initialClients);
+  })().catch((err) => console.error("updateClient failed:", err?.response?.data || err));
+};
+
+const deleteClient = (id: string) => {
+  (async () => {
+    await api.delete(`${endpointMap.clients}/${id}`);
+    await fetchData("clients", setClients, initialClients);
+  })().catch((err) => console.error("deleteClient failed:", err?.response?.data || err));
+};
+
+/** Clock Records */
+const addClockRecord = (record: any) => {
+  (async () => {
+    try {
+      console.log('🔄 Attempting clock in with data:', record);
+      const response = await clockService.clockIn({
+        employeeId: record.employeeId,
+        employeeName: record.employeeName
+      });
+      console.log('🔄 Clock in response:', response);
+
+      if (response.success) {
+        console.log("✅ Clock in successful:", response.data);
+        await fetchData("clockRecords", setClockRecords, initialClockRecords);
+      } else {
+        console.error("❌ Clock in failed:", response.message);
+        alert(`Error: ${response.message || 'Unknown error occurred'}`);
+      }
+    } catch (err: any) {
+      console.error("addClockRecord failed:", err?.response?.data || err);
+      const errorMessage = err?.response?.data?.message || err.message || "Failed to clock in";
+      alert(`Error: ${errorMessage}`);
+    }
+  })();
+};
+
+const updateClockRecord = (id: string, record: any) => {
+  (async () => {
+    try {
+      const response = await clockService.clockOut({
+        employeeId: record.employeeId
+      });
+
+      if (response.success) {
+        console.log("✅ Clock out successful:", response.data);
+        await fetchData("clockRecords", setClockRecords, initialClockRecords);
+      } else {
+        console.error("❌ Clock out failed:", response.message);
+        alert(`Error: ${response.message}`);
+      }
+    } catch (err: any) {
+      console.error("updateClockRecord failed:", err?.response?.data || err);
+      const errorMessage = err?.response?.data?.message || err.message || "Failed to clock out";
+      alert(`Error: ${errorMessage}`);
+    }
+  })();
+};
+
+const deleteClockRecord = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.attendance}/${id}`);
+    await fetchData("clockRecords", setClockRecords, initialClockRecords);
+  })().catch((err) => console.error("deleteClockRecord failed:", err?.response?.data || err));
+};
+
+/** Absence -> Leaves */
+const addAbsence = (absence: any) => {
+  (async () => {
+    const payload = {
+      employee: absence.employeeId,
+      fromDate: absence.startDate,
+      toDate: absence.endDate,
+      leaveTypeId: absence.leaveTypeId || absence.type,
+      reason: absence.reason,
+      status: "Pending",
+    };
+    await api.post<any>(endpointMap.leaveRequests, payload);
+    await fetchData("absences", setAbsences, initialAbsences);
+  })().catch((err) => console.error("addAbsence failed:", err?.response?.data || err));
+};
+
+const updateAbsence = (id: string, absence: any) => {
+  (async () => {
+    const payload: any = {};
+    if (absence.employeeId) payload.employee = absence.employeeId;
+    if (absence.startDate) payload.fromDate = absence.startDate;
+    if (absence.endDate) payload.toDate = absence.endDate;
+    if (absence.type) payload.leaveTypeId = absence.leaveTypeId || absence.type;
+    if (absence.reason) payload.reason = absence.reason;
+    if (absence.status) payload.status = absence.status;
+
+    await api.put<any>(`${endpointMap.leaveRequests}/${id}`, payload);
+    await fetchData("absences", setAbsences, initialAbsences);
+  })().catch((err) => console.error("updateAbsence failed:", err?.response?.data || err));
+};
+
+const deleteAbsence = (id: string) => {
+  (async () => {
+    await api.delete<any>(`${endpointMap.leaveRequests}/${id}`);
+    await fetchData("absences", setAbsences, initialAbsences);
+  })().catch((err) => console.error("deleteAbsence failed:", err?.response?.data || err));
+};
+
+const toggleClock = () => setIsClockActive((p) => !p);
+
+useEffect(() => {
+  let interval: ReturnType<typeof setInterval> | null = null;
+  if (isClockActive) {
+    interval = setInterval(() => {
+      setWorkingTime((prev) => {
+        let seconds = prev.seconds + 1;
+        let minutes = prev.minutes;
+        let hours = prev.hours;
+        if (seconds >= 60) {
+          seconds = 0;
+          minutes += 1;
+        }
+        if (minutes >= 60) {
+          minutes = 0;
+          hours += 1;
+        }
+        return { hours, minutes, seconds };
+      });
+    }, 1000);
+  }
+  return () => interval && clearInterval(interval);
+}, [isClockActive]);
+
+return (
+  <DataContext.Provider
+    value={{
+      employees,
+      departments,
+      designations,
+      attendance,
+      shifts,
+      leaveRequests,
+      leaveTypes,
+      holidays,
+      birthdays,
+      anniversaries,
+      jobPostings,
+      candidates,
+      interviews,
+      payrollEntries,
+      salaryComponents,
+      announcements,
+      chatMessages,
+      tasks,
+      clients,
+      clockRecords,
+      absences,
+
+      isClockActive,
+      workingTime,
+      toggleClock,
+
+      refreshTasks,
+      fetchData,
+
+      addEmployee,
+      updateEmployee,
+      deleteEmployee,
+
+      addDepartment,
+      updateDepartment,
+      deleteDepartment,
+
+      addDesignation,
+      updateDesignation,
+      deleteDesignation,
+
+      addAttendance,
+      updateAttendance,
+      deleteAttendance,
+
+      addShift,
+      updateShift,
+      deleteShift,
+
+      addLeaveRequest,
+      updateLeaveRequest,
+      deleteLeaveRequest,
+
+      addLeaveType,
+      updateLeaveType,
+      deleteLeaveType,
+
+      addHoliday,
+      updateHoliday,
+      deleteHoliday,
+
+      addBirthday,
+      updateBirthday,
+      deleteBirthday,
+
+      addJobPosting,
+      updateJobPosting,
+      deleteJobPosting,
+
+      addCandidate,
+      updateCandidate,
+      deleteCandidate,
+
+      addInterview,
+      updateInterview,
+      deleteInterview,
+
+      addPayrollEntry,
+      updatePayrollEntry,
+      deletePayrollEntry,
+
+      addSalaryComponent,
+      updateSalaryComponent,
+      deleteSalaryComponent,
+
+      addAnnouncement,
+      updateAnnouncement,
+      deleteAnnouncement,
+
+      addChatMessage,
+      updateChatMessage,
+      deleteChatMessage,
+
+      addTask,
+      updateTask,
+      deleteTask,
+
+      addClient,
+      updateClient,
+      deleteClient,
+
+      addClockRecord,
+      updateClockRecord,
+      deleteClockRecord,
+
+      addAbsence,
+      updateAbsence,
+      deleteAbsence,
+    }}
+  >
+    {children}
+  </DataContext.Provider>
+);
+}
+
+export const useData = () => {
+  const context = useContext(DataContext);
+  if (context === undefined) {
+    throw new Error("useData must be used within a DataProvider");
+  }
+  return context;
+};

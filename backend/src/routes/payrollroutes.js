@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getPayrolls, createPayroll, updatePayroll, deletePayroll } from "../controllers/payrollController.js";
+import { getPayrolls, createPayroll, updatePayroll, deletePayroll } from "../controllers/payrollcontroller.js";
 
 const router = Router();
 
