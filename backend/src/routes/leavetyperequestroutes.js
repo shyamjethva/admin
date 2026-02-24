@@ -3,7 +3,7 @@ import auth from "../middleware/authmiddleware.js";
 import {
     getLeaveTypes,
     createLeaveType,
-} from "../controllers/leaveTypeController.js";
+} from "../controllers/leavetypecontroller.js";
 
 const router = express.Router();
 

@@ -4,7 +4,6 @@ import {
     createAttendance,
     updateAttendance,
     deleteAttendance,
-    markAbsentEmployees,
 } from "../controllers/attendancecontroller.js";
 import { protect } from "../middleware/authmiddleware.js";
 
@@ -15,6 +14,6 @@ router.get("/", protect, getAllAttendance);
 router.post("/", protect, createAttendance);
 router.put("/:id", protect, updateAttendance);
 router.delete("/:id", protect, deleteAttendance);
-router.post("/mark-absent", protect, markAbsentEmployees);
+// Removed mark-absent route - attendance records are only created when employees clock in/out
 
 export default router;

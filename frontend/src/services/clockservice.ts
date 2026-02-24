@@ -6,8 +6,9 @@ export interface ClockRecord {
     employeeName?: string;
     date: string;
     checkIn: string;
-    checkInTimestamp?: string;
+    checkInTimestamp?: Date;
     checkOut?: string;
+    checkOutTimestamp?: Date;
     hours?: number;
     status?: string;
     notes?: string;

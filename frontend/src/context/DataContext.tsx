@@ -632,40 +632,17 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  const deleteAttendance = async (id) => {
+  const deleteAttendance = async (id: string) => {
     try {
       await api.delete(`/attendance/${id}`);
-      await fetchData("attendance", setAttendance, initialAttendance);
+      setAttendance(prev => prev.filter(a => a._id !== id));
     } catch (err) {
       console.error("deleteAttendance failed:", err?.response?.data || err);
       throw err;
     }
   };
 
-  const markAbsentEmployees = async (date?: string) => {
-    try {
-      const response = await api.post('/attendance/mark-absent', { date });
-      console.log('✅ Marked absent employees:', response.data);
-
-      // Refresh attendance data after marking absent employees
-      await fetchData("attendance", setAttendance, initialAttendance);
-
-      // Show success message
-      if (typeof window !== 'undefined' && window.alert) {
-        alert(`✅ Successfully marked ${response.data.data.absentCount} employees as absent for ${response.data.data.date}`);
-      }
-    } catch (err) {
-      console.error("markAbsentEmployees failed:", err?.response?.data || err);
-
-      // Show error message
-      const errorMessage = err?.response?.data?.message || err.message || "Failed to mark absent employees";
-      if (typeof window !== 'undefined' && window.alert) {
-        alert(`❌ Error: ${errorMessage}`);
-      }
-
-      throw err;
-    }
-  };
+  // Removed markAbsentEmployees function - attendance records are only created when employees clock in/out
 
   // Leave Request CRUD functions
   const addLeaveRequest = async (request) => {
@@ -1388,7 +1365,6 @@ export const DataProvider = ({ children }) => {
     addAttendance,
     updateAttendance,
     deleteAttendance,
-    markAbsentEmployees,
     addLeaveRequest,
     updateLeaveRequest,
     deleteLeaveRequest,

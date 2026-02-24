@@ -20,7 +20,10 @@ export const clockIn = async (req, res) => {
             });
         }
 
-        const today = new Date().toISOString().split('T')[0];
+        // Use the server's local date to ensure consistency
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
         // Capture the EXACT time when the request is processed (when button is clicked)
         const currentTime = new Date();
         const clockInTime = currentTime.toTimeString().split(' ')[0]; // HH:MM:SS format
@@ -93,7 +96,10 @@ export const clockIn = async (req, res) => {
 export const clockOut = async (req, res) => {
     try {
         const { employeeId } = req.body;
-        const today = new Date().toISOString().split('T')[0];
+        // Use the server's local date to ensure consistency
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
         // Capture the EXACT time when the request is processed (when button is clicked)
         const currentTime = new Date();
         const clockOutTime = currentTime.toTimeString().split(' ')[0]; // HH:MM:SS format
@@ -175,18 +181,36 @@ export const clockOut = async (req, res) => {
 export const getTodayAttendance = async (req, res) => {
     try {
         const { employeeId } = req.params;
-        const today = new Date().toISOString().split('T')[0];
+        // Use the server's local date to match the date when attendance was recorded
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+        console.log('🔍 getTodayAttendance called for employeeId:', employeeId);
+        console.log('📅 Today is:', today, '(Server local time)');
+        console.log('📅 UTC date would be:', new Date().toISOString().split('T')[0], 'for comparison');
 
         let query = { date: today };
 
         // Handle employeeId properly
         if (mongoose.Types.ObjectId.isValid(employeeId)) {
             query.employeeId = new mongoose.Types.ObjectId(employeeId);
+            console.log('📋 Query using ObjectId for employeeId:', query.employeeId);
         } else {
             query.employeeId = employeeId;
+            console.log('📋 Query using string for employeeId:', query.employeeId);
         }
 
+        console.log('🔍 Query being executed:', JSON.stringify(query, null, 2));
+
         const attendance = await Attendance.findOne(query).populate("employeeId", "name email");
+
+        console.log('🔍 Found attendance record:', attendance ? {
+            _id: attendance._id,
+            date: attendance.date,
+            checkIn: attendance.checkIn,
+            checkOut: attendance.checkOut,
+            employeeId: attendance.employeeId
+        } : 'No record found');
 
         res.json({
             success: true,

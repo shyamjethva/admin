@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "nodemon server.js",
-    "seed": "node src/scripts/seedUsers.js",
-    "mark-absent": "node src/scripts/autoMarkAbsent.js"
+    "seed": "node src/scripts/seedUsers.js"
   },
   "keywords": [],
   "author": "",

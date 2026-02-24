@@ -114,15 +114,11 @@ export const attendanceService = {
         return res.data;
     },
 
-    delete: async (id: string) => {
+    deleteAttendance: async (id: string) => {
         const res = await api.delete(`/attendance/${id}`);
         return res.data;
     },
-
-    markAbsentEmployees: async (date?: string) => {
-        const res = await api.post('/attendance/mark-absent', { date });
-        return res.data;
-    },
+    // Removed markAbsentEmployees function - attendance records are only created when employees clock in/out
 };
 
 export default attendanceService;

@@ -1,6 +1,6 @@
 import express from "express";
 import auth from "../middleware/authmiddleware.js";
-import { createLeaveType, getLeaveTypes, updateLeaveType, deleteLeaveType } from "../controllers/leaveTypeController.js";
+import { createLeaveType, getLeaveTypes, updateLeaveType, deleteLeaveType } from "../controllers/leavetypecontroller.js";
 
 const router = express.Router();
 

@@ -35,7 +35,7 @@ const app = express();
 // Frontend is Vite by default (5173). Keep 3000 too (sometimes people run React on 3000).
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:3000", "http://localhost:3001"],
+    origin: ["http://localhost:5173", "http://localhost:3000"],
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],

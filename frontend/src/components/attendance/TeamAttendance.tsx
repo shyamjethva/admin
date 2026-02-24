@@ -269,7 +269,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Calendar as CalendarIcon, Users } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { attendanceService } from '../../services/attendanceservices';
 import { Modal } from '../Modal';
@@ -338,16 +338,10 @@ export function TeamAttendance() {
   console.log('🔄 TeamAttendance - All attendance dates:', attendance.map((a: any) => a.date));
 
   // Show ALL employees with their attendance for selected date
-  const getAttendanceForEmployee = (empId: string) => {
-    return attendance.find((a: any) => {
-      let attendanceEmpId;
-      if (typeof a.employeeId === 'object' && a.employeeId) {
-        attendanceEmpId = a.employeeId._id || a.employeeId.id || a.employeeId;
-      } else {
-        attendanceEmpId = a.employeeId;
-      }
-      return String(attendanceEmpId) === String(empId) && a.date === selectedDate;
-    });
+  const getAttendanceForEmployee = (employeeId: string) => {
+    return attendance.find(
+      (att: any) => att.date === selectedDate && String(att.employeeId) === String(employeeId)
+    );
   };
 
   const filteredAttendance = attendance.filter((a: any) => a.date === selectedDate);
@@ -492,18 +486,6 @@ export function TeamAttendance() {
     alert(`Attendance marked for ${successCount} employees${errorCount > 0 ? `. ${errorCount} failed.` : '.'}`);
   };
 
-  // Function to mark absent employees for the selected date
-  const handleMarkAbsentEmployees = async () => {
-    if (window.confirm(`Are you sure you want to mark all employees without attendance as absent for ${selectedDate}?`)) {
-      try {
-        await markAbsentEmployees(selectedDate);
-      } catch (error) {
-        console.error('Error marking absent employees:', error);
-        alert('Failed to mark absent employees. Please try again.');
-      }
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -520,19 +502,14 @@ export function TeamAttendance() {
             Mark Attendance
           </button>
           <button
-            onClick={() => setShowBulkModal(true)}
+            onClick={handleBulkSubmit}
+            disabled={isSubmitting}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
           >
-            <Plus size={20} />
-            Mark All Employees
+            <Users size={16} />
+            <span>Mark All Employees</span>
           </button>
-          <button
-            onClick={handleMarkAbsentEmployees}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            <Plus size={20} />
-            Mark Absent
-          </button>
+          {/* Removed "Mark Absent Employees" button - attendance records are only created when employees clock in/out */}
         </div>
       </div>
 
