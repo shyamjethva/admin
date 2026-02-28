@@ -71,12 +71,12 @@ export function EmployeeLeaveTypes() {
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm text-gray-600">Type</span>
                                     <span className={`text-sm font-medium ${(leaveType as any).isPaid !== undefined
-                                            ? (leaveType as any).isPaid
-                                                ? 'text-green-600'
-                                                : 'text-gray-600'
-                                            : leaveType.paidLeave
-                                                ? 'text-green-600'
-                                                : 'text-gray-600'
+                                        ? (leaveType as any).isPaid
+                                            ? 'text-green-600'
+                                            : 'text-gray-600'
+                                        : leaveType.paidLeave
+                                            ? 'text-green-600'
+                                            : 'text-gray-600'
                                         }`}>
                                         {(leaveType as any).isPaid !== undefined
                                             ? (leaveType as any).isPaid

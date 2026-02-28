@@ -16,26 +16,54 @@ const attendanceSchema = new mongoose.Schema(
             required: true,
         },
 
-        checkIn: {
-            type: String,
-            required: false
-        }, // "09:00:00"
-        checkInTimestamp: { type: Date }, // ISO timestamp for timer
-
-        checkOut: {
-            type: String,
-            required: false
-        },                 // "18:00:00"
-        checkOutTimestamp: { type: Date }, // ISO timestamp for timer
-
+        // Current status
         status: {
             type: String,
-            enum: ["present", "absent", "late", "half-day"],
-            default: "present",
+            enum: ["clocked_out", "clocked_in", "on_break"],
+            default: "clocked_out",
         },
 
-        hours: { type: Number, default: 0 },
+        // Multiple sessions support
+        sessions: [
+            {
+                clockInAt: { type: Date, required: true },
+                clockOutAt: { type: Date },
+                durationSeconds: { type: Number, default: 0 }
+            }
+        ],
 
+        // Break tracking
+        breaks: [
+            {
+                breakInAt: { type: Date, required: true },
+                breakOutAt: { type: Date },
+                durationSeconds: { type: Number, default: 0 }
+            }
+        ],
+
+        // Convenience fields for display
+        breakIn: { type: String }, // "13:00:00"
+        breakOut: { type: String }, // "14:00:00"
+        breakDuration: { type: Number, default: 0 }, // in minutes
+
+        // Total time calculations
+        totals: {
+            totalClockSeconds: { type: Number, default: 0 },
+            totalBreakSeconds: { type: Number, default: 0 },
+            workSeconds: { type: Number, default: 0 } // totalClockSeconds - totalBreakSeconds
+        },
+
+        // Tracking for validation
+        lastClockInAt: { type: Date },
+        currentSessionOpen: { type: Boolean, default: false },
+        currentBreakOpen: { type: Boolean, default: false },
+
+        // Legacy fields (for backward compatibility)
+        checkIn: { type: String }, // "09:00:00"
+        checkInTimestamp: { type: Date }, // ISO timestamp for timer
+        checkOut: { type: String }, // "18:00:00"
+        checkOutTimestamp: { type: Date }, // ISO timestamp for timer
+        hours: { type: Number, default: 0 },
         notes: { type: String, trim: true },
     },
     { timestamps: true }

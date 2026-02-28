@@ -7,6 +7,7 @@ const leaveRequestSchema = new mongoose.Schema(
 
         leaveTypeId: { type: String, default: "" },
         leaveTypeName: { type: String, default: "" },
+        leaveTypeCode: { type: String, default: "" },
 
         fromDate: { type: String, required: true },
         toDate: { type: String, required: true },

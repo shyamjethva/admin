@@ -37,6 +37,18 @@ export const clockService = {
         return res.data;
     },
 
+    // Break in
+    breakIn: async (data: { employeeId: string }) => {
+        const res = await api.post<ClockResponse>("/clock/break-in", data);
+        return res.data;
+    },
+
+    // Break out
+    breakOut: async (data: { employeeId: string }) => {
+        const res = await api.post<ClockResponse>("/clock/break-out", data);
+        return res.data;
+    },
+
     // Get today's attendance record
     getToday: async (employeeId: string) => {
         const res = await api.get<ClockResponse>(`/clock/today/${employeeId}`);

@@ -1,7 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
+import { initializeSocket, setupSocketListeners } from '../services/socketService';
+import api from '../services/api';
 
 const safeISO = (value?: any) => {
   const d = value ? new Date(value) : new Date();
@@ -17,7 +19,7 @@ const safeDateOnly = (value?: any) => {
 
 export interface Notification {
   id: string;
-  type: 'leave' | 'task' | 'announcement' | 'interview' | 'payroll' | 'birthday' | 'anniversary' | 'holiday' | 'clock' | 'client' | 'system';
+  type: 'leave' | 'task' | 'announcement' | 'interview' | 'payroll' | 'birthday' | 'anniversary' | 'holiday' | 'clock' | 'client' | 'system' | 'message';
   title: string;
   message: string;
   timestamp: string;
@@ -25,6 +27,7 @@ export interface Notification {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   relatedId?: string; // ID of the related entity (task, leave request, etc.)
   actionUrl?: string; // Page to navigate to when clicked
+  dismissed?: boolean; // Flag to hide deleted notifications without wiping them from tracking
 }
 
 interface NotificationContextType {
@@ -35,6 +38,8 @@ interface NotificationContextType {
   markAllAsRead: () => void;
   deleteNotification: (id: string) => void;
   clearAllNotifications: () => void;
+  clearChatNotifications: (chatId: string) => void;
+  getLatestNotifications: (limit?: number) => Notification[];
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -55,21 +60,237 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [lastCheckedTime, setLastCheckedTime] = useState(new Date().toISOString());
 
+  // Debug logs
+  console.log('NotificationContext - User:', user?.name, 'Role:', user?.role);
+  console.log('NotificationContext - Current notifications:', notifications);
+  console.log('NotificationContext - Unread count:', notifications.filter(n => !n.read && !n.dismissed).length);
+
+  // Initialize socket connection for real-time notifications
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token && user) {
+      console.log('Initializing notification socket for user:', user.id);
+      const socket = initializeSocket(token);
+
+      // Debug connection
+      socket.on('connect', () => {
+        console.log('Notification socket connected:', socket.id);
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('Notification socket connection error:', error);
+      });
+
+      // Setup centralized listeners
+      const handleNewMessage = (data: any) => {
+        console.log('🔔 NotificationContext received new_message event:', data);
+        console.log('🔔 User ID:', user.id);
+        console.log('🔔 Data sender ID:', data.senderId);
+
+        // Handle 'new_message' events for non-chat notifications
+        console.log('🔔 Checking new_message condition:', { dataType: data.type, conversationId: data.conversationId });
+        if (data.type === 'new_message' && data.conversationId !== 'general') {
+          // Robust comparison for sender ID (ensuring strings)
+          const isFromSelf = String(data.senderId || data.userId) === String(user.id);
+          console.log('🔔 Is from self:', isFromSelf);
+
+          if (!isFromSelf) {
+            const msgText = data.message || "Sent an attachment";
+            console.log('🔔 Creating notification for message:', msgText);
+
+            // Generate a truly unique ID for each notification to prevent duplicates
+            const uniqueNotificationId = `other_${data.conversationId || 'general'}_${data.senderId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+            const newNotification: Omit<Notification, 'id' | 'timestamp' | 'read'> = {
+              type: 'message',
+              title: `New message from ${data.senderName || 'User'}`,
+              message: msgText,
+              priority: 'medium',
+              relatedId: uniqueNotificationId,
+              actionUrl: 'group-chat' // Matches Sidebar.tsx and App.tsx
+            };
+
+            console.log('🔔 Creating notification object:', newNotification);
+            addNotification(newNotification);
+            console.log('🔔 Notification added successfully');
+          } else {
+            console.log('🔔 Message is from self, not creating notification for user:', user.id);
+          }
+        } else {
+          console.log('🔔 New message condition not met (likely chat message, handled by WhatChat):', { dataType: data.type, conversationId: data.conversationId });
+        }
+      };
+
+      const handleOtherNotification = (data: any) => {
+        console.log('🔔 NotificationContext received other notification event:', data);
+        console.log('🔔 User ID:', user.id);
+        console.log('🔔 Data sender ID:', data.senderId);
+
+        // Only handle non-message notifications (e.g., leave, task, etc.)
+        if (data.type && data.type !== 'message' && data.type !== 'new_message') {
+          const msgText = data.message || "New notification";
+          console.log('🔔 Creating other notification for:', msgText);
+
+          const uniqueNotificationId = `other_${data.type}_${data.senderId || 'system'}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+          const newNotification: Omit<Notification, 'id' | 'timestamp' | 'read'> = {
+            type: data.type,
+            title: data.title || 'New Notification',
+            message: msgText,
+            priority: data.priority || 'medium',
+            relatedId: uniqueNotificationId,
+            actionUrl: data.actionUrl || ''
+          };
+
+          console.log('🔔 Creating other notification object:', newNotification);
+          addNotification(newNotification);
+          console.log('🔔 Other notification added successfully');
+        } else {
+          console.log('🔔 Other notification condition not met (likely chat message, handled by WhatChat):', { dataType: data.type });
+        }
+      };
+
+      const handleChatNotification = (data: any) => {
+        console.log('🔔 NotificationContext received chat_notification event:', data);
+        console.log('🔔 User ID:', user?.id);
+        console.log('🔔 Data sender ID:', data.senderId);
+
+        // Handle 'chat_notification' events for chat messages
+        // Check if this is a chat message notification
+        if (data.type === 'message' && data.conversationId === 'general') {
+          // Robust comparison for sender ID (ensuring strings)
+          const isFromSelf = String(data.senderId) === String(user?.id);
+          console.log('🔔 Is from self:', isFromSelf);
+
+          const msgText = data.message || "Sent an attachment";
+          console.log('🔔 Creating chat notification for message:', msgText);
+
+          // Generate a truly unique ID for each notification to prevent duplicates
+          const uniqueNotificationId = `chat_general_${data.senderId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+          const newNotification: Omit<Notification, 'id' | 'timestamp' | 'read'> = {
+            type: 'message',
+            title: isFromSelf ? `You sent: ${msgText.substring(0, 30)}${msgText.length > 30 ? '...' : ''}` : `New message from ${data.senderName || 'User'}`,
+            message: msgText,
+            priority: 'medium',
+            relatedId: uniqueNotificationId,
+            actionUrl: 'group-chat' // Matches Sidebar.tsx and App.tsx
+          };
+
+          console.log('🔔 Creating chat notification object:', newNotification);
+          addNotification(newNotification);
+          console.log('🔔 Chat notification added successfully');
+        } else {
+          console.log('🔔 Chat notification condition not met:', { dataType: data.type, conversationId: data.conversationId });
+        }
+      };
+
+      const cleanup = setupSocketListeners(
+        socket,
+        null, // Don't handle new_message in NotificationContext
+        handleChatNotification,  // Handle chat notification events
+        null  // Don't handle online users in NotificationContext
+      );
+
+      return () => {
+        cleanup();
+        socket.off('connect');
+        socket.off('connect_error');
+      };
+    }
+  }, [user]); // Removed addNotification from dependencies to avoid circular dependency
+
   // Load notifications from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(`notifications_${user?.id}`);
     if (stored) {
       try {
-        setNotifications(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        console.log('Loaded notifications from localStorage:', parsed);
+        setNotifications(parsed);
       } catch (err) {
         console.error('Error loading notifications:', err);
       }
     }
-  }, [user?.id]);
+
+    // Load pending chat notifications from backend when user signs in
+    if (user?.id) {
+      console.log('User signed in, loading pending chat notifications for:', user.id, 'Role:', user.role);
+      loadPendingChatNotifications();
+    }
+  }, [user?.id, user?.role]); // Added user.role to dependencies to ensure it runs when role changes too
+
+  // Load pending chat notifications from backend
+  const loadPendingChatNotifications = async () => {
+    try {
+      console.log('Loading pending chat notifications for user:', user?.id, 'Role:', user?.role);
+      const response = await api.get('/chat-notifications');
+      console.log('Response from chat-notifications API:', response.data);
+
+      if (response.data.success && response.data.data) {
+        console.log(`Found ${response.data.data.length} pending chat notifications for user ${user?.id}`);
+
+        // Process each notification and convert to our notification format
+        const chatNotifications = response.data.data.map((notif: any) => {
+          // Check if this notification is for the current user (not from themselves)
+          const isFromSelf = String(notif.senderId) === String(user?.id);
+
+          return {
+            id: `chat-${notif._id}-${Date.now()}`,
+            type: 'message',
+            title: isFromSelf
+              ? `You sent: ${notif.message.substring(0, 30)}${notif.message.length > 30 ? '...' : ''}`
+              : `New message from ${notif.senderName || 'User'}`,
+            message: notif.message,
+            timestamp: notif.createdAt || new Date().toISOString(),
+            read: notif.isRead || false,
+            priority: notif.priority || 'medium',
+            relatedId: notif.messageId,
+            actionUrl: 'group-chat'
+          };
+        });
+
+        console.log('Mapped chat notifications:', chatNotifications);
+
+        setNotifications(prev => {
+          // Filter out duplicates based on relatedId
+          const newNotifs = chatNotifications.filter((newNotif: any) =>
+            !prev.some(existing => existing.relatedId === newNotif.relatedId)
+          );
+
+          console.log(`Adding ${newNotifs.length} new notifications, filtered out ${chatNotifications.length - newNotifs.length} duplicates`);
+
+          // Add toast notifications for new messages that are not from the current user
+          newNotifs.forEach(notification => {
+            if (!notification.title.startsWith('You sent')) {
+              const toastMessage = `${notification.title}: ${notification.message}`;
+              if (notification.priority === 'urgent') toast.error(toastMessage);
+              else if (notification.priority === 'high') toast.warning(toastMessage);
+              else toast.info(toastMessage);
+            }
+          });
+
+          return [...newNotifs, ...prev];
+        });
+
+        console.log('Loaded pending chat notifications:', chatNotifications);
+      } else {
+        console.log('No success or data in response');
+      }
+    } catch (error) {
+      console.error('Error loading pending chat notifications:', error);
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+        console.error('Error response headers:', error.response.headers);
+      }
+    }
+  };
 
   // Save notifications to localStorage whenever they change
   useEffect(() => {
     if (user?.id) {
+      console.log('Saving notifications to localStorage:', notifications);
       localStorage.setItem(`notifications_${user.id}`, JSON.stringify(notifications));
     }
   }, [notifications, user?.id]);
@@ -89,7 +310,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             n.title === keyTitle
         );
 
-        if (exists) return prev;
+        if (exists) {
+          console.log('🔔 Notification already exists, skipping:', notification);
+          return prev;
+        }
 
         const newNotification: Notification = {
           ...notification,
@@ -98,7 +322,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           read: false,
         };
 
-        // ✅ toast only when actually added
+        console.log('🔔 Adding new notification:', newNotification);
+
+        //✅ toast only when actually added
         const toastMessage = `${notification.title}: ${notification.message}`;
         if (notification.priority === 'urgent') toast.error(toastMessage);
         else if (notification.priority === 'high') toast.warning(toastMessage);
@@ -110,6 +336,22 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  // Get latest notifications (last 20 by default)
+  const getLatestNotifications = useCallback((limit: number = 20) => {
+    return [...notifications]
+      .filter(n => !n.dismissed)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, limit);
+  }, [notifications]);
+
+  // Clear notifications for specific chat/conversation
+  const clearChatNotifications = useCallback((chatId: string) => {
+    setNotifications(prev =>
+      prev.map(notif =>
+        notif.relatedId?.includes(chatId) ? { ...notif, read: true } : notif
+      )
+    );
+  }, []);
 
   const markAsRead = useCallback((id: string) => {
     setNotifications(prev =>
@@ -119,14 +361,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const markAllAsRead = useCallback(() => {
     setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
+    // Also clear the badge by updating unread count
+    console.log('All notifications marked as read');
   }, []);
 
   const deleteNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id));
+    setNotifications(prev => prev.map(notif => notif.id === id ? { ...notif, dismissed: true } : notif));
   }, []);
 
   const clearAllNotifications = useCallback(() => {
-    setNotifications([]);
+    setNotifications(prev => prev.map(notif => ({ ...notif, dismissed: true })));
   }, []);
 
   // Monitor leave requests for status changes
@@ -158,7 +402,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           addNotification({
             type: 'leave',
             title: isApproved ? 'Leave Request Approved' : 'Leave Request Rejected',
-            message: `Your ${request.leaveType} request from ${request.startDate} to ${request.endDate} has been ${request.status}`,
+            message: `Your ${request.leaveType || request.leaveTypeName || request.leaveTypeCode || "Leave"} request from ${request.startDate || request.fromDate} to ${request.endDate || request.toDate} has been ${request.status}`,
             priority: isApproved ? 'medium' : 'high',
             relatedId: request.id,
             actionUrl: 'leave-requests',
@@ -405,18 +649,24 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, []);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const activeNotifications = notifications.filter(n => !n.dismissed);
+  const unreadCount = activeNotifications.filter(n => !n.read).length;
+
+  console.log('🔔 Final unread count:', unreadCount);
+  console.log('🔔 Active notifications:', activeNotifications);
 
   return (
     <NotificationContext.Provider
       value={{
-        notifications,
+        notifications: activeNotifications,
         unreadCount,
         addNotification,
         markAsRead,
         markAllAsRead,
         deleteNotification,
         clearAllNotifications,
+        clearChatNotifications,
+        getLatestNotifications,
       }}
     >
       {children}

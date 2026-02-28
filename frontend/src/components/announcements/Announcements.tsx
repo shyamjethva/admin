@@ -227,6 +227,19 @@ export function Announcements() {
     return <Megaphone size={20} className="text-gray-600" />;
   };
 
+  const formatDisplayDate = (dateStr?: string) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      if (!Number.isNaN(date.getTime())) {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        return `${day}/${month}/${date.getFullYear()}`;
+      }
+    } catch (e) { }
+    return dateStr;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -303,11 +316,11 @@ export function Announcements() {
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       <span>Posted by {createdByDisplay}</span>
                       <span>•</span>
-                      <span>{announcement.createdAt}</span>
+                      <span>{formatDisplayDate(announcement.createdAt)}</span>
                       {announcement.expiresAt && (
                         <>
                           <span>•</span>
-                          <span>Expires: {announcement.expiresAt}</span>
+                          <span>Expires: {formatDisplayDate(announcement.expiresAt)}</span>
                         </>
                       )}
                     </div>

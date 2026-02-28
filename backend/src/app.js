@@ -20,6 +20,7 @@ import reportRoutes from "./routes/reportroutes.js";
 import candidateRoutes from "./routes/candidateroutes.js";
 import payrollRoutes from "./routes/payrollroutes.js";
 import chatRoutes from "./routes/whatchatroutes.js";
+import chatNotificationRoutes from "./routes/chatnotificationroutes.js";
 
 import clientRoutes from "./routes/clientroutes.js";
 import celebrationroutes from "./routes/celebrationroutes.js";
@@ -75,6 +76,7 @@ app.use("/api/payroll", payrollRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/celebrations", celebrationroutes);
 app.use("/api/notifications", notificationroutes);
+app.use("/api/chat-notifications", chatNotificationRoutes);
 app.use("/api/salary-components", salaryComponentRoutes);
 app.use("/api/settings", settingsRoutes);
 

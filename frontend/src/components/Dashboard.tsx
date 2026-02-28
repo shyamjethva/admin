@@ -1,16 +1,239 @@
-import { Users, Calendar, FileText, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { Users, Calendar, FileText, DollarSign, TrendingUp, TrendingDown, Clock, Coffee, LogIn, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import { clockService } from '../services/clockservice';
 
 export function Dashboard() {
   const { employees, leaveRequests, attendance, announcements } = useData();
   const { user } = useAuth();
+
+  // Attendance state
+  const [status, setStatus] = useState<'clocked_out' | 'clocked_in' | 'on_break'>('clocked_out');
+  const [workingTime, setWorkingTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [breakTime, setBreakTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [lastCheckInTime, setLastCheckInTime] = useState<Date | null>(null);
+  const [lastBreakInTime, setLastBreakInTime] = useState<Date | null>(null);
+  const [totals, setTotals] = useState({
+    totalClockTime: '0h 0m',
+    totalBreakTime: '0h 0m',
+    netWorkingHours: '0h 0m'
+  });
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // Load today's attendance on mount
+  useEffect(() => {
+    if (user?.role === 'employee') {
+      loadTodayAttendance();
+    }
+  }, [user]);
+
+  // Timer effect - calculate actual elapsed time
+  useEffect(() => {
+    let interval: any;
+
+    const calculateElapsedTime = () => {
+      const now = new Date();
+
+      if (status === 'clocked_in' && lastCheckInTime) {
+        // Calculate working time: (now - lastCheckInTime) - break time
+        const totalElapsed = (now.getTime() - lastCheckInTime.getTime()) / 1000;
+        // We'll need to subtract break time from backend eventually
+        const hours = Math.floor(totalElapsed / 3600);
+        const minutes = Math.floor((totalElapsed % 3600) / 60);
+        const seconds = Math.floor(totalElapsed % 60);
+        setWorkingTime({ hours, minutes, seconds });
+      } else if (status === 'on_break' && lastBreakInTime) {
+        // Calculate break time: (now - lastBreakInTime)
+        const breakElapsed = (now.getTime() - lastBreakInTime.getTime()) / 1000;
+        const hours = Math.floor(breakElapsed / 3600);
+        const minutes = Math.floor((breakElapsed % 3600) / 60);
+        const seconds = Math.floor(breakElapsed % 60);
+        setBreakTime({ hours, minutes, seconds });
+      }
+    };
+
+    if (status === 'clocked_in' || status === 'on_break') {
+      // Calculate immediately on status change
+      calculateElapsedTime();
+
+      // Then update every second
+      interval = setInterval(calculateElapsedTime, 1000);
+    }
+
+    return () => clearInterval(interval);
+  }, [status, lastCheckInTime, lastBreakInTime]);
+
+  const loadTodayAttendance = async () => {
+    try {
+      const response = await clockService.getToday(user!.id);
+      if (response.success && response.data && !Array.isArray(response.data)) {
+        const record: any = response.data;
+        setStatus(record.status || 'clocked_out');
+
+        // Set timestamp states for timer calculation
+        if (record.status === 'clocked_in' && record.lastClockInAt) {
+          setLastCheckInTime(new Date(record.lastClockInAt));
+          setLastBreakInTime(null);
+        } else if (record.status === 'on_break' && record.breaks && record.breaks.length > 0) {
+          const latestBreak = record.breaks[record.breaks.length - 1];
+          if (latestBreak && !latestBreak.breakOutAt && latestBreak.breakInAt) {
+            setLastBreakInTime(new Date(latestBreak.breakInAt));
+            // Also set check-in time for working time calculation
+            if (record.lastClockInAt) {
+              setLastCheckInTime(new Date(record.lastClockInAt));
+            }
+          }
+        } else {
+          // Clocked out
+          setLastCheckInTime(null);
+          setLastBreakInTime(null);
+        }
+
+        // Update totals
+        if (record.totals) {
+          setTotals({
+            totalClockTime: formatSeconds(record.totals.totalClockSeconds || 0),
+            totalBreakTime: formatSeconds(record.totals.totalBreakSeconds || 0),
+            netWorkingHours: formatSeconds(record.totals.workSeconds || 0)
+          });
+        }
+
+        setLastUpdated(new Date());
+      }
+    } catch (error) {
+      console.error('Failed to load attendance:', error);
+    }
+  };
+
+  const formatSeconds = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+  };
+
+  const handleClockIn = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const response = await clockService.clockIn({
+        employeeId: user.id,
+        employeeName: user.name
+      });
+      if (response.success) {
+        setStatus('clocked_in');
+        setLastCheckInTime(new Date());
+        setLastBreakInTime(null);
+        await loadTodayAttendance();
+      }
+    } catch (error) {
+      console.error('Clock in failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClockOut = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const response = await clockService.clockOut({ employeeId: user.id });
+      if (response.success) {
+        setStatus('clocked_out');
+        setLastCheckInTime(null);
+        setLastBreakInTime(null);
+        setWorkingTime({ hours: 0, minutes: 0, seconds: 0 });
+        setBreakTime({ hours: 0, minutes: 0, seconds: 0 });
+        await loadTodayAttendance();
+      }
+    } catch (error) {
+      console.error('Clock out failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBreakIn = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const response = await clockService.breakIn({ employeeId: user.id });
+      if (response.success) {
+        setStatus('on_break');
+        setLastBreakInTime(new Date());
+        await loadTodayAttendance();
+      }
+    } catch (error) {
+      console.error('Break in failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBreakOut = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const response = await clockService.breakOut({ employeeId: user.id });
+      if (response.success) {
+        setStatus('clocked_in');
+        setLastBreakInTime(null);
+        await loadTodayAttendance();
+      }
+    } catch (error) {
+      console.error('Break out failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = () => {
+    switch (status) {
+      case 'clocked_in': return 'bg-green-100 text-green-800';
+      case 'on_break': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusText = () => {
+    switch (status) {
+      case 'clocked_in': return 'WORKING';
+      case 'on_break': return 'ON BREAK';
+      default: return 'CLOCKED OUT';
+    }
+  };
+
+  const formatTime = (time: { hours: number, minutes: number, seconds: number }) => {
+    return `${time.hours.toString().padStart(2, '0')}:${time.minutes.toString().padStart(2, '0')}:${time.seconds.toString().padStart(2, '0')}`;
+  };
 
   const activeEmployees = employees.filter(e => e.status === 'active').length;
   const pendingLeaves = leaveRequests.filter(lr => lr.status === 'pending').length;
   const todayDate = new Date().toISOString().split('T')[0];
   const todayAttendance = attendance.filter(a => a.date === todayDate).length;
   const recentAnnouncements = announcements.slice(0, 3);
+
+  // Check if employee can perform actions
+  const canBreakIn = status === 'clocked_in';
+  const canClockOut = status !== 'on_break';
+  const canBreakOut = status === 'on_break';
+  const canClockIn = status === 'clocked_out';
+
+  // Check if break out is allowed (minimum 1 minute rule)
+  const [canBreakOutEarly, setCanBreakOutEarly] = useState(true);
+
+  useEffect(() => {
+    if (status === 'on_break' && lastBreakInTime) {
+      const timer = setInterval(() => {
+        const elapsed = (new Date().getTime() - lastBreakInTime.getTime()) / 1000;
+        setCanBreakOutEarly(elapsed >= 60);
+      }, 1000);
+      return () => clearInterval(timer);
+    } else {
+      setCanBreakOutEarly(true);
+    }
+  }, [status, lastBreakInTime]);
 
   // Filter leave requests for current employee only
   const employeeLeaveRequests = user?.role === 'employee'
@@ -67,6 +290,19 @@ export function Dashboard() {
       color: 'bg-purple-500',
     },
   ];
+
+  const formatDisplayDate = (dateStr?: string) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      if (!Number.isNaN(date.getTime())) {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        return `${day}/${month}/${date.getFullYear()}`;
+      }
+    } catch (e) { }
+    return dateStr;
+  };
 
   return (
     <div className="space-y-6">
@@ -143,7 +379,7 @@ export function Dashboard() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 line-clamp-2">{announcement.content}</p>
-                <p className="text-xs text-gray-500 mt-2">{announcement.createdAt}</p>
+                <p className="text-xs text-gray-500 mt-2">{formatDisplayDate(announcement.createdAt)}</p>
               </div>
             ))}
           </div>
@@ -167,25 +403,140 @@ export function Dashboard() {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">My Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">Department</p>
-              <p className="text-lg font-medium text-gray-800 mt-1">{user?.department}</p>
+        <>
+          {/* Attendance Widget for Employees */}
+          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-800">Attendance</h2>
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor()}`}>
+                  {getStatusText()}
+                </span>
+                {lastUpdated && (
+                  <span className="text-xs text-gray-500">
+                    Updated: {lastUpdated.toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">Designation</p>
-              <p className="text-lg font-medium text-gray-800 mt-1">{user?.designation}</p>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <button
+                onClick={handleClockIn}
+                disabled={!canClockIn || loading}
+                className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all cursor-pointer ${canClockIn
+                  ? 'bg-green-50 hover:bg-green-100 border-2 border-green-200 hover:border-green-300'
+                  : 'bg-gray-100 border-2 border-gray-200 cursor-not-allowed'
+                  }`}
+              >
+                <LogIn className={`w-8 h-8 mb-2 ${canClockIn ? 'text-green-600' : 'text-gray-400'}`} />
+                <span className={`font-medium ${canClockIn ? 'text-green-700' : 'text-gray-500'}`}>Clock In</span>
+              </button>
+
+              <button
+                onClick={handleClockOut}
+                disabled={!canClockOut || loading}
+                className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all cursor-pointer ${canClockOut
+                  ? 'bg-red-50 hover:bg-red-100 border-2 border-red-200 hover:border-red-300'
+                  : 'bg-gray-100 border-2 border-gray-200 cursor-not-allowed'
+                  }`}
+              >
+                <LogOut className={`w-8 h-8 mb-2 ${canClockOut ? 'text-red-600' : 'text-gray-400'}`} />
+                <span className={`font-medium ${canClockOut ? 'text-red-700' : 'text-gray-500'}`}>Clock Out</span>
+              </button>
+
+              <button
+                onClick={handleBreakIn}
+                disabled={!canBreakIn || loading}
+                className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all ${canBreakIn
+                  ? 'bg-yellow-50 hover:bg-yellow-100 border-2 border-yellow-200 hover:border-yellow-300'
+                  : 'bg-gray-100 border-2 border-gray-200 cursor-not-allowed'
+                  }`}
+              >
+                <Coffee className={`w-8 h-8 mb-2 ${canBreakIn ? 'text-yellow-600' : 'text-gray-400'}`} />
+                <span className={`font-medium ${canBreakIn ? 'text-yellow-700' : 'text-gray-500'}`}>Break In</span>
+              </button>
+
+              <button
+                onClick={handleBreakOut}
+                disabled={!canBreakOut || !canBreakOutEarly || loading}
+                className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all ${canBreakOut && canBreakOutEarly
+                  ? 'bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-300'
+                  : 'bg-gray-100 border-2 border-gray-200 cursor-not-allowed'
+                  }`}
+              >
+                <Coffee className={`w-8 h-8 mb-2 rotate-180 ${canBreakOut && canBreakOutEarly ? 'text-blue-600' : 'text-gray-400'}`} />
+                <span className={`font-medium ${canBreakOut && canBreakOutEarly ? 'text-blue-700' : 'text-gray-500'}`}>
+                  {canBreakOut && !canBreakOutEarly ? `Wait ${Math.ceil(60 - (new Date().getTime() - lastBreakInTime!.getTime()) / 1000)}s` : 'Break Out'}
+                </span>
+              </button>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">My Leaves</p>
-              <p className="text-lg font-medium text-gray-800 mt-1">
-                {leaveRequestsWithDays.length} Applied
-              </p>
+
+            {/* Live Timers */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="text-blue-600" size={20} />
+                  <span className="font-medium text-blue-800">Working Time</span>
+                </div>
+                <div className="text-2xl font-mono font-bold text-blue-700">
+                  {formatTime(workingTime)}
+                </div>
+              </div>
+
+              <div className="bg-orange-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Coffee className="text-orange-600" size={20} />
+                  <span className="font-medium text-orange-800">Break Time</span>
+                </div>
+                <div className="text-2xl font-mono font-bold text-orange-700">
+                  {formatTime(breakTime)}
+                </div>
+              </div>
+            </div>
+
+            {/* Today Summary */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-medium text-gray-800 mb-3">Today Summary</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">Total Clock Time</p>
+                  <p className="text-xl font-bold text-gray-800">{totals.totalClockTime}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">Total Break Time</p>
+                  <p className="text-xl font-bold text-gray-800">{totals.totalBreakTime}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">Net Working Hours</p>
+                  <p className="text-xl font-bold text-green-600">{totals.netWorkingHours}</p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* My Information */}
+          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">My Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">Department</p>
+                <p className="text-lg font-medium text-gray-800 mt-1">{user?.department}</p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">Designation</p>
+                <p className="text-lg font-medium text-gray-800 mt-1">{user?.designation}</p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">My Leaves</p>
+                <p className="text-lg font-medium text-gray-800 mt-1">
+                  {leaveRequestsWithDays.length} Applied
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

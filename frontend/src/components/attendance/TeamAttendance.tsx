@@ -1,273 +1,3 @@
-// import { useState } from 'react';
-// import { Plus, Pencil, Trash2, Calendar as CalendarIcon } from 'lucide-react';
-// import { useData, Attendance } from '../../context/DataContext';
-// import { Modal } from '../Modal';
-
-// export function TeamAttendance() {
-//   const { attendance, addAttendance, updateAttendance, deleteAttendance, employees } = useData();
-//   const [showModal, setShowModal] = useState(false);
-//   const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null);
-//   const [selectedDate, setSelectedDate] = useState('');
-//   const [formData, setFormData] = useState({
-//     employeeId: '',
-//     employeeName: '',
-//     date: '',
-//     checkIn: '',
-//     checkOut: '',
-//     status: 'present' as 'present' | 'absent' | 'late' | 'half-day',
-//     hours: 0,
-//   });
-
-//   const filteredAttendance = attendance.filter(a => a.date === selectedDate);
-
-//   const handleAdd = () => {
-//     setEditingAttendance(null);
-//     setFormData({
-//       employeeId: '',
-//       employeeName: '',
-//       date: selectedDate,
-//       checkIn: '',
-//       checkOut: '',
-//       status: 'present',
-//       hours: 0,
-//     });
-//     setShowModal(true);
-//   };
-
-//   const handleEdit = (attendance: Attendance) => {
-//     setEditingAttendance(attendance);
-//     setFormData({
-//       employeeId: attendance.employeeId,
-//       employeeName: attendance.employeeName,
-//       date: attendance.date,
-//       checkIn: attendance.checkIn,
-//       checkOut: attendance.checkOut,
-//       status: attendance.status,
-//       hours: attendance.hours,
-//     });
-//     setShowModal(true);
-//   };
-
-//   const handleDelete = (id: string) => {
-//     if (window.confirm('Are you sure you want to delete this attendance record?')) {
-//       deleteAttendance(id);
-//     }
-//   };
-
-//   const handleSubmit = (e: React.FormEvent) => {
-//     e.preventDefault();
-//     const hours = calculateHours(formData.checkIn, formData.checkOut);
-//     if (editingAttendance) {
-//       updateAttendance(editingAttendance.id, { ...formData, hours });
-//     } else {
-//       addAttendance({ ...formData, hours });
-//     }
-//     setShowModal(false);
-//   };
-
-//   const calculateHours = (checkIn: string, checkOut: string) => {
-//     const [inHour, inMin] = checkIn.split(':').map(Number);
-//     const [outHour, outMin] = checkOut.split(':').map(Number);
-//     const totalMinutes = (outHour * 60 + outMin) - (inHour * 60 + inMin);
-//     return totalMinutes / 60;
-//   };
-
-//   const handleEmployeeChange = (employeeId: string) => {
-//     const employee = employees.find(e => e.id === employeeId);
-//     if (employee) {
-//       setFormData({ ...formData, employeeId, employeeName: employee.name });
-//     }
-//   };
-
-//   return (
-//     <div className="space-y-6">
-//       <div className="flex items-center justify-between">
-//         <div>
-//           <h1 className="text-3xl font-bold text-gray-800">Team Attendance</h1>
-//           <p className="text-gray-600 mt-1">Track daily attendance for team members</p>
-//         </div>
-//         <button
-//           onClick={handleAdd}
-//           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-//         >
-//           <Plus size={20} />
-//           Mark Attendance
-//         </button>
-//       </div>
-
-//       <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
-//         <div className="flex items-center gap-3">
-//           <CalendarIcon size={20} className="text-gray-600" />
-//           <input
-//             type="date"
-//             value={selectedDate}
-//             onChange={(e) => setSelectedDate(e.target.value)}
-//             className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-//           />
-//           <div className="flex-1 flex gap-4 justify-end">
-//             <div className="text-sm">
-//               <span className="text-gray-600">Present: </span>
-//               <span className="font-medium text-green-600">
-//                 {filteredAttendance.filter(a => a.status === 'present').length}
-//               </span>
-//             </div>
-//             <div className="text-sm">
-//               <span className="text-gray-600">Late: </span>
-//               <span className="font-medium text-yellow-600">
-//                 {filteredAttendance.filter(a => a.status === 'late').length}
-//               </span>
-//             </div>
-//             <div className="text-sm">
-//               <span className="text-gray-600">Absent: </span>
-//               <span className="font-medium text-red-600">
-//                 {filteredAttendance.filter(a => a.status === 'absent').length}
-//               </span>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-
-//       <div className="bg-white rounded-lg shadow border border-gray-200">
-//         <div className="overflow-x-auto">
-//           <table className="w-full">
-//             <thead className="bg-gray-50">
-//               <tr>
-//                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-//                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check In</th>
-//                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check Out</th>
-//                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
-//                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-//                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-//               </tr>
-//             </thead>
-//             <tbody className="bg-white divide-y divide-gray-200">
-//               {filteredAttendance.map((record) => (
-//                 <tr key={record.id} className="hover:bg-gray-50">
-//                   <td className="px-6 py-4 whitespace-nowrap">
-//                     <div className="font-medium text-gray-900">{record.employeeName}</div>
-//                   </td>
-//                   <td className="px-6 py-4 whitespace-nowrap text-gray-600">{record.checkIn}</td>
-//                   <td className="px-6 py-4 whitespace-nowrap text-gray-600">{record.checkOut}</td>
-//                   <td className="px-6 py-4 whitespace-nowrap text-gray-600">{record.hours.toFixed(1)}h</td>
-//                   <td className="px-6 py-4 whitespace-nowrap">
-//                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${record.status === 'present' ? 'bg-green-100 text-green-700' :
-//                         record.status === 'late' ? 'bg-yellow-100 text-yellow-700' :
-//                           record.status === 'half-day' ? 'bg-blue-100 text-blue-700' :
-//                             'bg-red-100 text-red-700'
-//                       }`}>
-//                       {record.status}
-//                     </span>
-//                   </td>
-//                   <td className="px-6 py-4 whitespace-nowrap">
-//                     <div className="flex items-center gap-2">
-//                       <button
-//                         onClick={() => handleEdit(record)}
-//                         className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-//                       >
-//                         <Pencil size={16} />
-//                       </button>
-//                       <button
-//                         onClick={() => handleDelete(record.id)}
-//                         className="p-1 text-red-600 hover:bg-red-50 rounded"
-//                       >
-//                         <Trash2 size={16} />
-//                       </button>
-//                     </div>
-//                   </td>
-//                 </tr>
-//               ))}
-//             </tbody>
-//           </table>
-//         </div>
-//       </div>
-
-//       {showModal && (
-//         <Modal onClose={() => setShowModal(false)} title={editingAttendance ? 'Edit Attendance' : 'Mark Attendance'}>
-//           <form onSubmit={handleSubmit} className="space-y-4">
-//             <div>
-//               <label className="block text-sm font-medium text-gray-700 mb-1">Employee</label>
-//               <select
-//                 value={formData.employeeId}
-//                 onChange={(e) => handleEmployeeChange(e.target.value)}
-//                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                 required
-//               >
-//                 <option value="">Select Employee</option>
-//                 {employees.map((emp) => (
-//                   <option key={emp.id} value={emp.id}>{emp.name}</option>
-//                 ))}
-//               </select>
-//             </div>
-//             <div>
-//               <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-//               <input
-//                 type="date"
-//                 value={formData.date}
-//                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-//                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                 required
-//               />
-//             </div>
-//             <div className="grid grid-cols-2 gap-4">
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-1">Check In</label>
-//                 <input
-//                   type="time"
-//                   value={formData.checkIn}
-//                   onChange={(e) => setFormData({ ...formData, checkIn: e.target.value })}
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                   required
-//                 />
-//               </div>
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-1">Check Out</label>
-//                 <input
-//                   type="time"
-//                   value={formData.checkOut}
-//                   onChange={(e) => setFormData({ ...formData, checkOut: e.target.value })}
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                   required
-//                 />
-//               </div>
-//             </div>
-//             <div>
-//               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-//               <select
-//                 value={formData.status}
-//                 onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-//                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                 required
-//               >
-//                 <option value="present">Present</option>
-//                 <option value="late">Late</option>
-//                 <option value="half-day">Half Day</option>
-//                 <option value="absent">Absent</option>
-//               </select>
-//             </div>
-//             <div className="flex gap-3 pt-4">
-//               <button
-//                 type="submit"
-//                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-//               >
-//                 {editingAttendance ? 'Update' : 'Mark'} Attendance
-//               </button>
-//               <button
-//                 type="button"
-//                 onClick={() => setShowModal(false)}
-//                 className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-//               >
-//                 Cancel
-//               </button>
-//             </div>
-//           </form>
-//         </Modal>
-//       )}
-//     </div>
-//   );
-// }
-
-
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Calendar as CalendarIcon, Users } from 'lucide-react';
 import { useData } from '../../context/DataContext';
@@ -487,168 +217,160 @@ export function TeamAttendance() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="w-full px-4 md:px-6 pb-10 space-y-8">
+      {/* Premium Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pt-2">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Team Attendance</h1>
-          <p className="text-gray-600 mt-1">Track daily attendance for team members</p>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Team Attendance</h1>
+          <p className="text-gray-500 mt-1 font-medium flex items-center gap-2">
+            <Users className="w-4 h-4 text-blue-500" />
+            Comprehensive daily tracking and team performance management
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={handleAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="flex items-center gap-2.5 px-6 py-3.5 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 font-bold shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
-            <Plus size={20} />
+            <Plus size={20} className="stroke-[3]" />
             Mark Attendance
           </button>
           <button
             onClick={handleBulkSubmit}
             disabled={isSubmitting}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            className="flex items-center gap-2.5 px-6 py-3.5 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 font-bold shadow-lg shadow-purple-600/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100"
           >
-            <Users size={16} />
-            <span>Mark All Employees</span>
+            <Users size={20} className="stroke-[2.5]" />
+            Mark All Team
           </button>
-          {/* Removed "Mark Absent Employees" button - attendance records are only created when employees clock in/out */}
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
-        <div className="flex items-center gap-3">
-          <CalendarIcon size={20} className="text-gray-600" />
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <div className="flex-1 flex gap-4 justify-end">
-            <div className="text-sm">
-              <span className="text-gray-600">Total Employees: </span>
-              <span className="font-medium text-gray-900">{employees.length}</span>
+      {/* Stats Summary Panel */}
+      <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+        <div className="flex flex-col lg:flex-row items-center gap-8">
+          <div className="flex items-center gap-4 border-r border-gray-100 pr-8">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
+              <CalendarIcon size={24} />
             </div>
-            <div className="text-sm">
-              <span className="text-gray-600">Present: </span>
-              <span className="font-medium text-green-600">
-                {employees.filter((emp: any) => {
-                  const att = getAttendanceForEmployee(String(emp.id || emp._id));
-                  return att?.status === 'present';
-                }).length}
-              </span>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Tracking Date</span>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="bg-transparent border-none p-0 text-lg font-black text-gray-900 focus:ring-0 cursor-pointer"
+              />
             </div>
-            <div className="text-sm">
-              <span className="text-gray-600">Late: </span>
-              <span className="font-medium text-yellow-600">
-                {employees.filter((emp: any) => {
-                  const att = getAttendanceForEmployee(String(emp.id || emp._id));
-                  return att?.status === 'late';
-                }).length}
-              </span>
-            </div>
-            <div className="text-sm">
-              <span className="text-gray-600">Absent: </span>
-              <span className="font-medium text-red-600">
-                {employees.filter((emp: any) => {
-                  const att = getAttendanceForEmployee(String(emp.id || emp._id));
-                  return att?.status === 'absent';
-                }).length}
-              </span>
-            </div>
-            <div className="text-sm">
-              <span className="text-gray-600">Not Marked: </span>
-              <span className="font-medium text-gray-600">
-                {employees.filter((emp: any) => !getAttendanceForEmployee(String(emp.id || emp._id))).length}
-              </span>
-            </div>
+          </div>
+
+          <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-4 w-full">
+            {[
+              { label: 'Total', value: employees.length, color: 'text-gray-900', bg: 'bg-gray-50' },
+              { label: 'Present', value: employees.filter(e => getAttendanceForEmployee(e.id || e._id)?.status === 'present').length, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: 'Late', value: employees.filter(e => getAttendanceForEmployee(e.id || e._id)?.status === 'late').length, color: 'text-amber-600', bg: 'bg-amber-50' },
+              { label: 'Absent', value: employees.filter(e => getAttendanceForEmployee(e.id || e._id)?.status === 'absent').length, color: 'text-rose-600', bg: 'bg-rose-50' },
+              { label: 'Pending', value: employees.filter(e => !getAttendanceForEmployee(e.id || e._id)).length, color: 'text-blue-600', bg: 'bg-blue-50' },
+            ].map((s, i) => (
+              <div key={i} className={`${s.bg} rounded-2xl p-4 flex flex-col items-center justify-center transition-transform hover:scale-105`}>
+                <span className={`text-xl font-black ${s.color}`}>{s.value}</span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5">{s.label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200">
+      {/* Main Table */}
+      <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check In</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check Out</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          <table className="w-full border-separate border-spacing-0">
+            <thead>
+              <tr className="bg-gray-50/30">
+                <th className="px-8 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100">Employee Profile</th>
+                <th className="px-8 py-5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100">Check In</th>
+                <th className="px-8 py-5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100">Check Out</th>
+                <th className="px-8 py-5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100">Duration</th>
+                <th className="px-8 py-5 text-center text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100">Status</th>
+                <th className="px-8 py-5 text-right text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100">Manage</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {/* Show ALL employees with their attendance for selected date */}
+            <tbody className="divide-y divide-gray-50">
               {employees.map((emp: any) => {
                 const empId = String(emp.id || emp._id);
                 const attRecord = attendance.find((a: any) => {
-                  let aId;
-                  if (typeof a.employeeId === 'object' && a.employeeId) {
-                    aId = a.employeeId._id || a.employeeId.id || a.employeeId;
-                  } else {
-                    aId = a.employeeId;
-                  }
+                  let aId = typeof a.employeeId === 'object' ? (a.employeeId._id || a.employeeId.id) : a.employeeId;
                   return String(aId) === String(empId) && a.date === selectedDate;
                 });
+
                 return (
-                  <tr key={empId} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{
-                        typeof emp.name === 'string' ? emp.name :
-                          typeof emp.name === 'object' && emp.name ?
-                            (emp.name as any).name || (emp.name as any)._id || (emp.name as any).email || 'Unknown Employee' :
-                            'Unknown Employee'
-                      }</div>
-                      <div className="text-sm text-gray-500">{
-                        typeof emp.department === 'object' && emp.department?.name ? emp.department.name :
-                          typeof emp.departmentId === 'object' && emp.departmentId?.name ? emp.departmentId.name :
-                            typeof emp.department === 'string' ? emp.department :
-                              typeof emp.departmentId === 'string' ? emp.departmentId : '-'
-                      }</div>
+                  <tr key={empId} className="hover:bg-blue-50/10 transition-all duration-300 group">
+                    <td className="px-8 py-5 whitespace-nowrap">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center font-black text-blue-700 border border-blue-200/50 shadow-sm group-hover:scale-110 transition-transform">
+                          {getEmployeeName(emp).charAt(0)}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[14px] font-extrabold text-gray-900 group-hover:text-blue-600 transition-colors">{getEmployeeName(emp)}</span>
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            {typeof emp.department === 'object' ? emp.department.name : emp.department || 'Staff'}
+                          </span>
+                        </div>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                      {attRecord?.checkIn || '-'}
+                    <td className="px-8 py-5 whitespace-nowrap text-center">
+                      {attRecord?.checkIn ? (
+                        <span className="text-[13px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100/50">
+                          {attRecord.checkIn}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-bold text-gray-300 uppercase italic">Not Set</span>
+                      )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                      {attRecord?.checkOut || '-'}
+                    <td className="px-8 py-5 whitespace-nowrap text-center">
+                      {attRecord?.checkOut ? (
+                        <span className="text-[13px] font-black text-rose-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-100/50">
+                          {attRecord.checkOut}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-bold text-gray-300 uppercase italic">Not Set</span>
+                      )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                      {attRecord ? (Number(attRecord.hours || 0)).toFixed(1) + 'h' : '-'}
+                    <td className="px-8 py-5 whitespace-nowrap text-center">
+                      <span className="text-[13px] font-black text-gray-800">
+                        {attRecord ? (Number(attRecord.hours || 0)).toFixed(1) + 'h' : '--'}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-8 py-5 whitespace-nowrap text-center">
                       {attRecord ? (
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${attRecord.status === 'present'
-                            ? 'bg-green-100 text-green-700'
+                          className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm ${attRecord.status === 'present'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                             : attRecord.status === 'late'
-                              ? 'bg-yellow-100 text-yellow-700'
+                              ? 'bg-amber-50 text-amber-700 border-amber-100'
                               : attRecord.status === 'half-day'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-red-100 text-red-700'
+                                ? 'bg-blue-50 text-blue-700 border-blue-100'
+                                : 'bg-rose-50 text-rose-700 border-rose-100'
                             }`}
                         >
                           {attRecord.status}
                         </span>
                       ) : (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                        <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-50 text-gray-400 border border-gray-100">
                           Not Marked
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
+                    <td className="px-8 py-5 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-2.5">
                         <button
                           onClick={() => {
-                            if (attRecord) {
-                              handleEdit(attRecord);
-                            } else {
-                              // Mark attendance for this employee
-                              const empName = typeof emp.name === 'string' ? emp.name :
-                                typeof emp.name === 'object' ? emp.name.name || emp.name._id || 'Unknown Employee' :
-                                  'Unknown Employee';
+                            if (attRecord) handleEdit(attRecord);
+                            else {
+                              const name = getEmployeeName(emp);
                               setFormData({
                                 employeeId: String(empId),
-                                employeeName: empName,
+                                employeeName: name,
                                 date: selectedDate,
                                 checkIn: '09:00',
                                 checkOut: '18:00',
@@ -658,227 +380,95 @@ export function TeamAttendance() {
                               setShowModal(true);
                             }
                           }}
-                          className={`p-1 rounded ${attRecord ? 'text-blue-600 hover:bg-blue-50' : 'text-green-600 hover:bg-green-50'}`}
+                          className={`p-2.5 rounded-xl transition-all ${attRecord ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'}`}
                         >
-                          {attRecord ? <Pencil size={16} /> : <Plus size={16} />}
+                          {attRecord ? <Pencil size={18} /> : <Plus size={18} className="stroke-[3]" />}
                         </button>
                         {attRecord && (
-                          <button onClick={() => handleDelete(attRecord)} className="p-1 text-red-600 hover:bg-red-50 rounded">
-                            <Trash2 size={16} />
+                          <button onClick={() => handleDelete(attRecord)} className="p-2.5 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl transition-all">
+                            <Trash2 size={18} />
                           </button>
                         )}
                       </div>
                     </td>
                   </tr>
-                )
-              }
-              )}
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* Modals - Refined for premium look */}
       {showModal && (
-        <Modal onClose={() => setShowModal(false)} title={editingAttendance ? 'Edit Attendance' : 'Mark Attendance'}>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+        <Modal onClose={() => setShowModal(false)} title={editingAttendance ? 'Edit Record' : 'Create Record'}>
+          <form onSubmit={handleSubmit} className="space-y-5 p-2">
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">Target Employee</label>
               <select
                 value={formData.employeeId}
                 onChange={(e) => handleEmployeeChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-5 py-3.5 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 font-bold transition-all"
                 required
               >
-                <option value="">Select Employee</option>
-                {employees.map((emp: any) => {
-                  // Handle different employee data structures
-                  const employeeId = emp.id || emp._id || (emp as any).employeeId;
-                  let employeeName = 'Unknown Employee';
-                  if (typeof emp.name === 'string') {
-                    employeeName = emp.name;
-                  } else if (typeof emp.name === 'object' && emp.name) {
-                    employeeName = emp.name.name || emp.name._id || emp.name.email || 'Unknown Employee';
-                  } else if (emp.fullName) {
-                    employeeName = emp.fullName;
-                  } else if (emp.displayName) {
-                    employeeName = emp.displayName;
-                  }
-
-                  let employeeEmail = '';
-                  if (typeof emp.email === 'string') {
-                    employeeEmail = emp.email;
-                  } else if (typeof emp.email === 'object' && emp.email) {
-                    employeeEmail = emp.email.email || emp.email._id || '';
-                  } else if (emp.email) {
-                    employeeEmail = emp.email;
-                  }
-
-                  // Only show employees with valid IDs
-                  if (!employeeId) return null;
-
-                  return (
-                    <option key={employeeId} value={employeeId}>
-                      {employeeName}{employeeEmail ? ` (${employeeEmail})` : ''}
-                    </option>
-                  );
-                })}
+                <option value="">Select Staff Member</option>
+                {employees.map((emp: any) => (
+                  <option key={emp.id || emp._id} value={emp.id || emp._id}>
+                    {getEmployeeName(emp)}
+                  </option>
+                ))}
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check In</label>
+            <div className="grid grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">Shift Start</label>
                 <input
                   type="time"
                   value={formData.checkIn}
                   onChange={(e) => setFormData({ ...formData, checkIn: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-5 py-3.5 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 font-bold transition-all"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check Out</label>
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">Shift End</label>
                 <input
                   type="time"
                   value={formData.checkOut}
                   onChange={(e) => setFormData({ ...formData, checkOut: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-5 py-3.5 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 font-bold transition-all"
                   required
                 />
               </div>
             </div>
-            <p className="text-xs text-gray-500">Use 24-hour format (e.g., 19:00 for 7 PM)</p>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                <option value="present">Present</option>
-                <option value="late">Late</option>
-                <option value="half-day">Half Day</option>
-                <option value="absent">Absent</option>
-              </select>
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">Attendance Status</label>
+              <div className="grid grid-cols-2 gap-3">
+                {['present', 'late', 'half-day', 'absent'].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, status: s as any })}
+                    className={`px-4 py-3 rounded-2xl font-bold uppercase text-[10px] tracking-widest transition-all border-2 ${formData.status === s ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-gray-100'}`}
+                  >
+                    {s.replace('-', ' ')}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-4 pt-4">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`flex-1 px-4 py-2 rounded-lg ${isSubmitting
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700'} text-white`}
+                className="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl hover:bg-blue-600 transition-all disabled:opacity-50"
               >
-                {isSubmitting
-                  ? 'Saving...'
-                  : editingAttendance
-                    ? 'Update Attendance'
-                    : 'Mark Attendance'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                Cancel
+                {isSubmitting ? 'Processing...' : editingAttendance ? 'Save Changes' : 'Confirm Record'}
               </button>
             </div>
           </form>
-        </Modal>
-      )}
-
-      {/* Bulk Attendance Modal */}
-      {showBulkModal && (
-        <Modal onClose={() => setShowBulkModal(false)} title="Mark All Employees Attendance">
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm text-gray-600 mb-2">
-                This will mark attendance for <strong>{employees.length}</strong> employees on the selected date.
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-              <input
-                type="date"
-                value={bulkFormData.date}
-                onChange={(e) => setBulkFormData({ ...bulkFormData, date: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check In</label>
-                <input
-                  type="time"
-                  value={bulkFormData.checkIn}
-                  onChange={(e) => setBulkFormData({ ...bulkFormData, checkIn: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check Out</label>
-                <input
-                  type="time"
-                  value={bulkFormData.checkOut}
-                  onChange={(e) => setBulkFormData({ ...bulkFormData, checkOut: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-              </div>
-            </div>
-            <p className="text-xs text-gray-500">Use 24-hour format (e.g., 19:00 for 7 PM)</p>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                value={bulkFormData.status}
-                onChange={(e) => setBulkFormData({ ...bulkFormData, status: e.target.value as any })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                required
-              >
-                <option value="present">Present</option>
-                <option value="late">Late</option>
-                <option value="half-day">Half Day</option>
-                <option value="absent">Absent</option>
-              </select>
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={handleBulkSubmit}
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-              >
-                {isSubmitting ? 'Marking...' : `Mark All ${employees.length} Employees`}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowBulkModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
         </Modal>
       )}
     </div>

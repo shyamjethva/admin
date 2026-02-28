@@ -40,6 +40,8 @@ export const whatchatService = {
 
     // ✅ POST /api/chat
     create: async (payload: Omit<ChatMessage, "_id">): Promise<ChatMessage> => {
+        console.log('Sending chat message:', payload); // Debug log
+
         const body = {
             userId: payload.userId,
             userName: payload.userName,
@@ -51,7 +53,9 @@ export const whatchatService = {
             isPrivate: !!payload.isPrivate,
         };
 
+        console.log('Sending request body:', body); // Debug log
         const res = await api.post<ApiResponse<ChatMessage>>("/chat", body);
+        console.log('Received response:', res.data); // Debug log
         return res.data.data;
     },
 };

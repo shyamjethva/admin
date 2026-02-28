@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Filter, Search } from 'lucide-react';
+import { Calendar, Clock, User, Filter, Search, LogIn, LogOut } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -153,173 +153,203 @@ export function EmployeeClockRecords() {
     // Get status badge color
     const getStatusColor = (status: string) => {
         switch (status?.toLowerCase()) {
+            case 'clocked_in':
+                return 'bg-green-100 text-green-800 border border-green-200';
+            case 'on_break':
+                return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+            case 'clocked_out':
+                return 'bg-gray-100 text-gray-800 border border-gray-200';
             case 'present':
-                return 'bg-green-100 text-green-800';
+                return 'bg-green-100 text-green-800 border border-green-200';
             case 'late':
-                return 'bg-yellow-100 text-yellow-800';
+                return 'bg-orange-100 text-orange-800 border border-orange-200';
             case 'absent':
-                return 'bg-red-100 text-red-800';
+                return 'bg-red-100 text-red-800 border border-red-200';
             default:
-                return 'bg-gray-100 text-gray-800';
+                return 'bg-blue-100 text-blue-800 border border-blue-200';
         }
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="w-full px-4 md:px-6 pb-10 space-y-6">
+            <div className="flex justify-between items-center pt-2">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Employee Clock Records</h1>
-                    <p className="text-gray-600 mt-1">View all employee clock in/out records</p>
+                    <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Employee Clock Records</h1>
+                    <p className="text-gray-500 mt-1 font-medium">Real-time attendance tracking and break management</p>
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="bg-white rounded-lg shadow p-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            <Calendar className="inline w-4 h-4 mr-1" />
-                            Date
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-[13px] font-bold text-gray-700 uppercase tracking-wider">
+                            <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                            Filter Date
                         </label>
                         <input
                             type="date"
                             value={dateFilter}
                             onChange={(e) => setDateFilter(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium text-gray-700"
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            <User className="inline w-4 h-4 mr-1" />
-                            Employee
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-[13px] font-bold text-gray-700 uppercase tracking-wider">
+                            <User className="w-3.5 h-3.5 text-blue-600" />
+                            By Employee
                         </label>
                         <select
                             value={employeeFilter}
                             onChange={(e) => setEmployeeFilter(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all appearance-none bg-no-repeat bg-[right_1rem_center] bg-[length:1.2em] font-medium text-gray-700"
                         >
                             <option value="">All Employees</option>
-                            {employees.map((employee: any) => {
-                                const empId = employee.id || employee._id;
-                                const empName = typeof employee.name === 'string' ? employee.name :
-                                    typeof employee.name === 'object' ? employee.name.name || employee.name._id || employee.name.email || 'Unknown Employee' :
-                                        'Unknown Employee';
-                                return (
-                                    <option key={empId} value={empId}>
-                                        {empName}
-                                    </option>
-                                );
-                            })}
+                            {employees.map((employee: any) => (
+                                <option key={employee.id || employee._id} value={employee.id || employee._id}>
+                                    {employee.name}
+                                </option>
+                            ))}
                         </select>
                     </div>
 
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            <Search className="inline w-4 h-4 mr-1" />
-                            Search
+                    <div className="md:col-span-2 space-y-2">
+                        <label className="flex items-center gap-2 text-[13px] font-bold text-gray-700 uppercase tracking-wider">
+                            <Search className="w-3.5 h-3.5 text-blue-600" />
+                            Search Records
                         </label>
-                        <input
-                            type="text"
-                            placeholder="Search by employee name or status..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <div className="relative group">
+                            <input
+                                type="text"
+                                placeholder="     Search by name, status or ID..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-14 pr-2 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium text-gray-700"
+                            />
+                            {/* <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" /> */}
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Records Table */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-800">
-                        Clock Records ({filteredRecords.length})
-                    </h2>
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+                <div className="px-6 py-5 border-b border-gray-50 flex justify-between items-center bg-white">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-50 rounded-lg">
+                            <Clock className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <h2 className="text-lg font-bold text-gray-900">
+                            Attendance Logs
+                        </h2>
+                        <span className="px-2.5 py-1 text-xs font-bold bg-blue-100/50 text-blue-700 rounded-lg border border-blue-200/50">
+                            {filteredRecords.length} Records
+                        </span>
+                    </div>
                 </div>
 
-                {filteredRecords.length === 0 ? (
-                    <div className="p-8 text-center">
-                        <Clock className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No records found</h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                            {dateFilter || employeeFilter || searchTerm
-                                ? 'Try adjusting your filters'
-                                : 'No clock records available'}
-                        </p>
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+                <div className="w-full overflow-x-auto">
+                    <table className="w-full border-separate border-spacing-0">
+                        <thead>
+                            <tr className="bg-gray-50/50">
+                                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Employee</th>
+                                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Date</th>
+                                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Clock In</th>
+                                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Break In</th>
+                                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Break Out</th>
+                                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Clock Out</th>
+                                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Working</th>
+                                <th className="px-6 py-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {filteredRecords.length === 0 ? (
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Employee
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Date
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Clock In
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Clock Out
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Hours Worked
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Status
-                                    </th>
+                                    <td colSpan={8} className="px-6 py-24 text-center">
+                                        <div className="flex flex-col items-center">
+                                            <div className="p-4 bg-gray-50 rounded-2xl mb-4">
+                                                <Clock className="h-10 w-10 text-gray-300" />
+                                            </div>
+                                            <h3 className="text-base font-bold text-gray-900">No records found</h3>
+                                            <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
+                                        </div>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {filteredRecords.map((record) => (
-                                    <tr key={record.id || record._id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center">
-                                                <div className="flex-shrink-0 h-10 w-10">
-                                                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                                        <User className="h-5 w-5 text-blue-600" />
-                                                    </div>
+                            ) : (
+                                filteredRecords.map((record) => (
+                                    <tr key={record.id || record._id} className="hover:bg-blue-50/10 transition-all duration-300 group">
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-11 w-11 flex-shrink-0 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center text-blue-700 font-extrabold border border-blue-200/50 shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
+                                                    {(record.employeeName && typeof record.employeeName === 'string' ? record.employeeName : getEmployeeName(record.employeeId)).charAt(0)}
                                                 </div>
-                                                <div className="ml-4">
-                                                    <div className="text-sm font-medium text-gray-900">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="text-sm font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
                                                         {record.employeeName && typeof record.employeeName === 'string' ?
                                                             record.employeeName :
                                                             getEmployeeName(record.employeeId)}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        ID: {typeof record.employeeId === 'object' && record.employeeId ?
+                                                    </span>
+                                                    <span className="text-[10px] font-bold text-gray-400 tracking-wider flex items-center gap-1.5 uppercase">
+                                                        <span className="w-1 h-1 rounded-full bg-blue-400"></span>
+                                                        {(typeof record.employeeId === 'object' && record.employeeId ?
                                                             (record.employeeId._id || record.employeeId.id || 'N/A') :
-                                                            record.employeeId || 'N/A'}
-                                                    </div>
+                                                            String(record.employeeId || 'N/A')).substring(0, 10)}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {record.date ? new Date(record.date).toLocaleDateString() : 'N/A'}
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-bold text-gray-800">
+                                                    {record.date ? new Date(record.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                                                </span>
+                                                <span className="text-[10px] font-medium text-gray-400 uppercase">{new Date(record.date).toLocaleDateString('en-GB', { weekday: 'long' })}</span>
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {formatTime(record.checkIn)}
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex items-center text-emerald-600 font-bold text-[13px] bg-emerald-50 px-2.5 py-1.5 rounded-xl w-fit border border-emerald-100/50 shadow-sm ring-2 ring-transparent group-hover:ring-emerald-200/20 transition-all">
+                                                <LogIn className="w-3.5 h-3.5 mr-2" />
+                                                {formatTime(record.checkIn)}
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {formatTime(record.checkOut)}
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex items-center text-amber-600 font-bold text-[13px] bg-amber-50 px-2.5 py-1.5 rounded-xl w-fit border border-amber-100/50 shadow-sm ring-2 ring-transparent group-hover:ring-amber-200/20 transition-all">
+                                                <Clock className="w-3.5 h-3.5 mr-2" />
+                                                {formatTime(record.breakIn)}
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {calculateHours(record)}
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex items-center text-blue-600 font-bold text-[13px] bg-blue-50 px-2.5 py-1.5 rounded-xl w-fit border border-blue-100/50 shadow-sm ring-2 ring-transparent group-hover:ring-blue-200/20 transition-all">
+                                                <Clock className="w-3.5 h-3.5 mr-2 opacity-50" />
+                                                {formatTime(record.breakOut)}
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(typeof record.status === 'string' ? record.status : 'unknown')}`}>
-                                                {typeof record.status === 'string' ? record.status : 'Unknown'}
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex items-center text-rose-600 font-bold text-[13px] bg-rose-50 px-2.5 py-1.5 rounded-xl w-fit border border-rose-100/50 shadow-sm ring-2 ring-transparent group-hover:ring-rose-200/20 transition-all">
+                                                <LogOut className="w-3.5 h-3.5 mr-2" />
+                                                {formatTime(record.checkOut)}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-sm font-black text-gray-900 bg-gray-100/80 px-2.5 py-1 rounded-lg w-fit">
+                                                    {calculateHours(record)}
+                                                </span>
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Total Active Time</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 whitespace-nowrap text-center">
+                                            <span className={`px-4 py-1.5 inline-flex text-[10px] leading-4 font-black uppercase tracking-[0.1em] rounded-full shadow-sm border ${getStatusColor(record.status)}`}>
+                                                {String(record.status || 'ABSENT').replace('_', ' ')}
                                             </span>
                                         </td>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

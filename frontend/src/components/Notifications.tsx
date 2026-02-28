@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { 
+import {
   Bell,
   CheckCheck,
   Trash2,
@@ -54,7 +54,7 @@ export function Notifications() {
   const getNotificationColor = (type: Notification['type'], priority: Notification['priority']) => {
     if (priority === 'urgent') return 'bg-red-600';
     if (priority === 'high') return 'bg-orange-600';
-    
+
     switch (type) {
       case 'leave':
         return 'bg-blue-600';
@@ -163,11 +163,10 @@ export function Notifications() {
               <button
                 key={type}
                 onClick={() => setFilterType(type)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
-                  filterType === type
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${filterType === type
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
               >
                 {type}
               </button>
@@ -185,11 +184,10 @@ export function Notifications() {
               <button
                 key={status}
                 onClick={() => setFilterRead(status)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
-                  filterRead === status
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${filterRead === status
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
               >
                 {status}
               </button>
@@ -216,9 +214,8 @@ export function Notifications() {
           filteredNotifications.map((notification) => (
             <div
               key={notification.id}
-              className={`bg-white rounded-lg shadow border border-gray-200 p-5 hover:shadow-md transition-shadow ${
-                !notification.read ? 'border-l-4 border-l-blue-600' : ''
-              }`}
+              className={`bg-white rounded-lg shadow border border-gray-200 p-5 hover:shadow-md transition-shadow ${!notification.read ? 'border-l-4 border-l-blue-600' : ''
+                }`}
             >
               <div className="flex gap-4">
                 {/* Icon */}
@@ -236,12 +233,11 @@ export function Notifications() {
                           <span className="w-2.5 h-2.5 bg-blue-600 rounded-full"></span>
                         )}
                       </div>
-                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium capitalize ${
-                        notification.priority === 'urgent' ? 'bg-red-100 text-red-700' :
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium capitalize ${notification.priority === 'urgent' ? 'bg-red-100 text-red-700' :
                         notification.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                        notification.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>
+                          notification.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-blue-100 text-blue-700'
+                        }`}>
                         {notification.priority}
                       </span>
                     </div>
@@ -253,9 +249,9 @@ export function Notifications() {
                       <Trash2 size={18} />
                     </button>
                   </div>
-                  
+
                   <p className="text-gray-700 mb-3 leading-relaxed">{notification.message}</p>
-                  
+
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">
                       {formatTimestamp(notification.timestamp)}

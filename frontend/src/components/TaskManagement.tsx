@@ -1,6 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Calendar, Clock, AlertCircle, List, Eye, Play, Pause, X, CheckCircle } from 'lucide-react';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import { useAuth } from '../context/AuthContext';
+
+// Function to get priority color classes
+const getPriorityColorClass = (priority: string) => {
+	const normalizedPriority = priority?.toLowerCase();
+	switch (normalizedPriority) {
+		case 'high':
+			return 'bg-red-100 text-red-800 border border-red-200';
+		case 'medium':
+			return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+		case 'low':
+			return 'bg-blue-100 text-blue-800 border border-blue-200';
+		default:
+			return 'bg-gray-100 text-gray-800 border border-gray-200';
+	}
+};
 import { useData } from '../context/DataContext';
 import { useNotifications } from '../context/NotificationContext';
 import api from '../services/api';
@@ -404,9 +420,9 @@ export function TaskManagement() {
 
 			{/* Task Management Header with Add Button */}
 			<div className="flex justify-between items-center bg-gray-800 p-4 rounded-lg">
-				<div className="flex items-center gap-2 text-white">
+				<div className="flex items-center gap-2 text-black">
 					<List size={20} />
-					<h2 className="text-lg font-semibold uppercase tracking-wider">Task Management</h2>
+					<h2 className="text-2xl font-bold">Task Management</h2>
 				</div>
 				{isAdminOrHR && (
 					<button
@@ -466,9 +482,17 @@ export function TaskManagement() {
 												{task.description || 'No description'}
 											</p>
 											<div className="flex gap-4 text-sm text-gray-500">
-												<span>Priority: {task.priority || 'Medium'}</span>
+												{task.priority ? (
+													<span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${getPriorityColorClass(task.priority)}`}>
+														{task.priority}
+													</span>
+												) : (
+													<span className="px-2 py-1 rounded-full text-xs font-bold uppercase bg-gray-100 text-gray-800 border border-gray-200">
+														Medium
+													</span>
+												)}
 												{task.dueDate && (
-													<span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+													<span>Due: {formatDateDDMMYYYY(task.dueDate)}</span>
 												)}
 												<div className="flex items-center gap-1">
 													<Clock size={14} />
@@ -718,10 +742,7 @@ export function TaskManagement() {
 											Priority
 										</span>
 										<div className="flex items-center gap-2">
-											<span className={`inline-block px-3 py-1 rounded text-xs font-bold uppercase ${viewingTask.priority === 'high' ? 'bg-red-100 text-red-700 border border-red-200' :
-												viewingTask.priority === 'medium' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-													'bg-slate-100 text-slate-700 border border-slate-200'
-												}`}>
+											<span className={`inline-block px-3 py-1 rounded text-xs font-bold uppercase ${getPriorityColorClass(viewingTask.priority || 'medium')}`}>
 												{viewingTask.priority || 'medium'}
 											</span>
 										</div>
@@ -733,7 +754,7 @@ export function TaskManagement() {
 										</span>
 										<div className="flex items-center gap-2 text-gray-900 font-medium">
 											<Calendar size={16} className="text-blue-500" />
-											{viewingTask.dueDate ? new Date(viewingTask.dueDate).toLocaleDateString() : 'No due date'}
+											{viewingTask.dueDate ? formatDateDDMMYYYY(viewingTask.dueDate) : 'No due date'}
 										</div>
 									</div>
 

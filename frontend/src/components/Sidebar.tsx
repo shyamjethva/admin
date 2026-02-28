@@ -1,281 +1,338 @@
-import { Users, Calendar, FileText, Briefcase, DollarSign, Megaphone, BarChart3, HelpCircle, ChevronDown, ChevronRight, LogOut, MessageCircle, Clock, UserCheck, CheckSquare, ClipboardList, PartyPopper } from 'lucide-react';
+import { Users, Calendar, FileText, Briefcase, DollarSign, Megaphone, BarChart3, HelpCircle, ChevronDown, LogOut, MessageCircle, Clock, UserCheck, CheckSquare, PartyPopper, ChevronRight, Users2, Building2, HandCoins, ReceiptText, BadgeCheck, CalendarCheck, PiggyBank, GraduationCap, ClipboardList, FileBarChart } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 
 interface SidebarProps {
   activePage: string;
   setActivePage: (page: string) => void;
 }
 
-interface MenuItem {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  children?: { id: string; label: string; roles?: ('admin' | 'hr' | 'employee')[] }[];
-  roles?: ('admin' | 'hr' | 'employee')[];
-}
-
-const menuItems: MenuItem[] = [
-  {
-    id: 'employee',
-    label: 'Employee',
-    icon: <Users size={20} />,
-    roles: ['admin', 'hr'],
-    children: [
-      { id: 'all-employees', label: 'All Employees' },
-      { id: 'departments', label: 'Departments' },
-      { id: 'designations', label: 'Designations' },
-    ],
-  },
-  {
-    id: 'attendance',
-    label: 'Attendance',
-    icon: <Calendar size={20} />,
-    roles: ['admin', 'hr'],
-    children: [
-      { id: 'employee-clock-records', label: 'Employee Clock Records' },
-      { id: 'shifts', label: 'Shifts' },
-    ],
-  },
-  {
-    id: 'clock-in-out',
-    label: 'Clock In/Out',
-    icon: <Clock size={20} />,
-    roles: ['employee'],
-    children: [],
-  },
-  {
-    id: 'leave',
-    label: 'Leave Management',
-    icon: <FileText size={20} />,
-    children: [
-      { id: 'leave-requests', label: 'Leave Requests' },
-      { id: 'leave-types', label: 'Leave Types', roles: ['admin', 'hr'] },
-      { id: 'employee-leave-types', label: 'Leave Types', roles: ['employee'] },
-    ],
-  },
-  {
-    id: 'recruitment',
-    label: 'Recruitment',
-    icon: <Briefcase size={20} />,
-    roles: ['admin', 'hr'],
-    children: [
-      { id: 'job-postings', label: 'Job Postings' },
-      { id: 'candidates', label: 'Candidates' },
-      { id: 'interview-schedule', label: 'Interview Schedule' },
-    ],
-  },
-  {
-    id: 'payroll',
-    label: 'Payroll',
-    icon: <DollarSign size={20} />,
-    roles: ['admin', 'hr'],
-    children: [
-      { id: 'payroll-processing', label: 'Payroll Processing' },
-      { id: 'salary-structure', label: 'Salary Structure' },
-    ],
-  },
-  {
-    id: 'clients',
-    label: 'Clients',
-    icon: <UserCheck size={20} />,
-    roles: ['admin', 'hr'],
-    children: [],
-  },
-  {
-    id: 'task-management',
-    label: 'Task Management',
-    icon: <CheckSquare size={20} />,
-    children: [],
-  },
-  {
-    id: 'group-chat',
-    label: 'WhatChat',
-    icon: <MessageCircle size={20} />,
-    children: [],
-  },
-  {
-    id: 'announcements',
-    label: 'Announcements',
-    icon: <Megaphone size={20} />,
-    children: [],
-  },
-  {
-    id: 'celebrations',
-    label: 'Celebrations',
-    icon: <PartyPopper size={20} />,
-    children: [
-      { id: 'holidays', label: 'Holidays' },
-      { id: 'birthdays', label: 'Birthdays' },
-    ],
-  },
-  {
-    id: 'reports',
-    label: 'Reports',
-    icon: <BarChart3 size={20} />,
-    roles: ['admin', 'hr'],
-    children: [
-      { id: 'reports', label: 'Generate Reports' },
-      { id: 'report-test', label: 'Report Storage Test' },
-    ],
-  },
-  {
-    id: 'help-support',
-    label: 'Help & Support',
-    icon: <HelpCircle size={20} />,
-    children: [],
-  },
-];
-
 export function Sidebar({ activePage, setActivePage }: SidebarProps) {
   const { user, logout } = useAuth();
-  // Timer logic for employee
-  const [timer, setTimer] = useState("00:00:00");
-  const [isClockedIn, setIsClockedIn] = useState(false);
-  const [todayRecord, setTodayRecord] = useState<any>(null);
-  useEffect(() => {
-    if (!user || user.role !== 'employee') return;
-    const fetchAttendance = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`http://localhost:5000/api/attendance?employeeId=${user.id}&date=${today}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const records = Array.isArray(data) ? data : data.data || [];
-        const todayRecord = records.find((r: any) => r.date === today);
-        setTodayRecord(todayRecord);
-        setIsClockedIn(!!(todayRecord && todayRecord.checkIn && !todayRecord.checkOut));
-      }
-    };
-    fetchAttendance();
-    const interval = setInterval(fetchAttendance, 30000);
-    return () => clearInterval(interval);
-  }, [user]);
+  const { unreadCount } = useNotifications();
 
-  useEffect(() => {
-    if (!isClockedIn || !todayRecord || !todayRecord.checkInTimestamp) {
-      setTimer("00:00:00");
-      return;
-    }
-    const interval = setInterval(() => {
-      const start = new Date(todayRecord.checkInTimestamp);
-      const now = new Date();
-      const diff = Math.max(0, now.getTime() - start.getTime());
-      const hours = Math.floor(diff / 3600000);
-      const minutes = Math.floor((diff % 3600000) / 60000);
-      const seconds = Math.floor((diff % 60000) / 1000);
-      setTimer(
-        `${hours.toString().padStart(2, '0')}:` +
-        `${minutes.toString().padStart(2, '0')}:` +
-        `${seconds.toString().padStart(2, '0')}`
-      );
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isClockedIn, todayRecord]);
-  const [expandedItems, setExpandedItems] = useState<string[]>(['employee']);
+  // State to manage expanded/collapsed submenus
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
+    'leave': false,
+    'attendance': false,
+    'recruitment': false,
+    'payroll': false,
+    'reports': false
+  });
 
-  const toggleExpanded = (id: string) => {
-    setExpandedItems(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
+  // Toggle submenu expansion
+  const toggleSubMenu = (menuId: string) => {
+    setExpandedMenus(prev => ({
+      ...prev,
+      [menuId]: !prev[menuId]
+    }));
   };
 
-  const hasAccess = (roles?: ('admin' | 'hr' | 'employee')[]) => {
+  const menuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    {
+      id: 'employees',
+      label: 'Employees',
+      icon: Users,
+      roles: ['admin', 'hr'],
+      hasSubmenu: true,
+      submenu: [
+        { id: 'all-employees', label: 'All Employees', icon: Users },
+        { id: 'departments', label: 'Departments', icon: Building2 },
+        { id: 'designations', label: 'Designations', icon: BadgeCheck },
+      ]
+    },
+    {
+      id: 'attendance',
+      label: 'Attendance',
+      icon: Clock,
+      roles: ['admin', 'hr'],
+      hasSubmenu: true,
+      submenu: [
+        { id: 'employee-clock-records', label: 'Employee Clock Records', icon: Clock },
+        { id: 'shifts', label: 'Shifts', icon: Clock },
+      ]
+    },
+    {
+      id: 'leave',
+      label: 'Leave',
+      icon: FileText,
+      hasSubmenu: true,
+      submenu: [
+        { id: 'leave-requests', label: 'Leave Requests', icon: FileText },
+        { id: 'leave-types', label: 'Leave Types', icon: FileText },
+      ]
+    },
+    {
+      id: 'recruitment',
+      label: 'Recruitment',
+      icon: Briefcase,
+      roles: ['admin', 'hr'],
+      hasSubmenu: true,
+      submenu: [
+        { id: 'job-postings', label: 'Job Postings', icon: Briefcase },
+        { id: 'candidates', label: 'Candidates', icon: Users },
+        { id: 'interview-schedule', label: 'Interview Schedule', icon: CalendarCheck },
+      ]
+    },
+    {
+      id: 'payroll',
+      label: 'Payroll',
+      icon: DollarSign,
+      roles: ['admin', 'hr'],
+      hasSubmenu: true,
+      submenu: [
+        { id: 'payroll-processing', label: 'Payroll Processing', icon: HandCoins },
+        { id: 'salary-structure', label: 'Salary Structure', icon: PiggyBank },
+      ]
+    },
+    {
+      id: 'reports',
+      label: 'Reports',
+      icon: FileBarChart,
+      roles: ['admin', 'hr'],
+      hasSubmenu: true,
+      submenu: [
+        { id: 'reports', label: 'All Reports', icon: FileBarChart },
+        { id: 'report-test', label: 'Report Test', icon: ClipboardList },
+      ]
+    },
+    { id: 'clients', label: 'Clients', icon: UserCheck, roles: ['admin', 'hr'] },
+    { id: 'task-management', label: 'Tasks', icon: CheckSquare },
+    { id: 'group-chat', label: 'Team Chat', icon: MessageCircle },
+    { id: 'announcements', label: 'Announcements', icon: Megaphone },
+    { id: 'holidays-birthdays', label: 'Celebrations', icon: PartyPopper },
+    { id: 'help-support', label: 'Help', icon: HelpCircle },
+  ];
+
+  const hasAccess = (roles?: string[]) => {
     if (!roles || roles.length === 0) return true;
     return user && roles.includes(user.role);
   };
 
-  const handleMenuClick = (item: MenuItem) => {
-    if (item.children && item.children.length > 0) {
-      toggleExpanded(item.id);
-    } else {
-      setActivePage(item.id);
-    }
-  };
-
-  const filteredMenuItems = menuItems.filter(item => hasAccess(item.roles));
+  const filteredMenuItems = menuItems.filter(item => {
+    if (!item.roles || item.roles.length === 0) return true;
+    return hasAccess(item.roles);
+  });
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
-      <div className="p-6 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-blue-600">Error Infotech</h1>
-        <p className="text-sm text-gray-600 mt-1">{user?.role.toUpperCase()} Dashboard</p>
-        {/* Employee Timer Display */}
-        {user && user.role === 'employee' && isClockedIn && todayRecord && todayRecord.checkInTimestamp && (
-          <div className="mt-2 flex items-center gap-2">
-            <Clock size={18} className="text-blue-600" />
-            <span className="font-semibold text-blue-700">Timer: {timer}</span>
+    <div style={{
+      width: '256px',
+      backgroundColor: '#111827', // gray-900
+      color: 'white',
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      borderRight: '1px solid #374151' // gray-700
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '24px 24px 16px',
+        borderBottom: '1px solid #374151',
+        backgroundColor: '#2563eb' // blue-600
+      }}>
+        <h1 style={{
+          fontSize: '20px',
+          fontWeight: 'bold',
+          color: 'white',
+          marginBottom: '4px'
+        }}>
+          Error Infotech
+        </h1>
+        <p style={{
+          fontSize: '14px',
+          color: 'rgba(255,255,255,0.8)'
+        }}>
+          Admin Panel
+        </p>
+        {user && (
+          <div style={{
+            marginTop: '16px',
+            backgroundColor: 'rgba(255,255,255,0.1)',
+            padding: '12px',
+            borderRadius: '8px'
+          }}>
+            <p style={{
+              fontSize: '14px',
+              color: 'white',
+              fontWeight: '500'
+            }}>
+              {user.name}
+            </p>
+            <p style={{
+              fontSize: '12px',
+              color: 'rgba(255,255,255,0.7)',
+              textTransform: 'capitalize'
+            }}>
+              {user.role}
+            </p>
           </div>
         )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-4">
-        <div
-          className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer mb-2 ${activePage === 'dashboard' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          onClick={() => setActivePage('dashboard')}
-        >
-          <BarChart3 size={20} />
-          <span>Dashboard</span>
-        </div>
+      {/* Navigation */}
+      <nav style={{
+        flex: 1,
+        padding: '16px',
+        overflowY: 'scroll',
+        /* Hide scrollbar for IE, Edge and Firefox */
+        msOverflowStyle: 'none',  /* IE and Edge */
+        scrollbarWidth: 'none'  /* Firefox */
+      }}>
+        <style>
+          {`
+          nav::-webkit-scrollbar {
+            display: none;
+          }
+        `}
+        </style>
+        <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {filteredMenuItems.map((item) => {
+            const isExpanded = expandedMenus[item.id];
+            const isActiveParent = item.hasSubmenu && item.submenu.some(sub => sub.id === activePage);
 
-        {filteredMenuItems.map((item) => (
-          <div key={item.id} className="mb-1">
-            <div
-              className={`flex items-center justify-between px-4 py-3 rounded-lg cursor-pointer ${activePage === item.id && (!item.children || item.children.length === 0)
-                ? 'bg-blue-50 text-blue-600'
-                : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              onClick={() => handleMenuClick(item)}
-            >
-              <div className="flex items-center gap-3">
-                {item.icon}
-                <span>{item.label}</span>
-              </div>
-              {item.children && item.children.length > 0 && (
-                <span>
-                  {expandedItems.includes(item.id) ? (
-                    <ChevronDown size={16} />
-                  ) : (
-                    <ChevronRight size={16} />
+            return (
+              <div key={item.id}>
+                {/* Main menu item */}
+                <div
+                  onClick={() => {
+                    if (item.hasSubmenu) {
+                      toggleSubMenu(item.id);
+                    } else {
+                      setActivePage(item.id);
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    marginBottom: '4px',
+                    cursor: item.hasSubmenu ? 'pointer' : 'pointer',
+                    backgroundColor: activePage === item.id || isActiveParent ? '#3b82f6' : 'transparent', // blue-500
+                    color: activePage === item.id || isActiveParent ? 'white' : '#9ca3af', // gray-400
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <item.icon size={20} style={{
+                    marginRight: '12px',
+                    color: activePage === item.id || isActiveParent ? 'white' : '#9ca3af'
+                  }} />
+                  <span style={{
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: 'white',
+                    flex: 1
+                  }}>
+                    {item.label}
+                  </span>
+                  {item.hasSubmenu && (
+                    <ChevronDown
+                      size={16}
+                      style={{
+                        color: activePage === item.id || isActiveParent ? 'white' : '#9ca3af',
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s'
+                      }}
+                    />
                   )}
-                </span>
-              )}
-            </div>
+                  {item.id === 'group-chat' && unreadCount > 0 && (
+                    <span style={{
+                      marginLeft: 'auto',
+                      backgroundColor: '#ef4444', // red-500
+                      color: 'white',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
 
-            {item.children && item.children.length > 0 && expandedItems.includes(item.id) && (
-              <div className="ml-4 mt-1 space-y-1">
-                {item.children
-                  .filter(child => hasAccess(child.roles))
-                  .map((child) => (
-                    <div
-                      key={child.id}
-                      className={`px-4 py-2 rounded-lg cursor-pointer text-sm ${activePage === child.id
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'text-gray-600 hover:bg-gray-50'
-                        }`}
-                      onClick={() => setActivePage(child.id)}
-                    >
-                      {child.label}
-                    </div>
-                  ))}
+                {/* Submenu items */}
+                {item.hasSubmenu && isExpanded && (
+                  <div style={{
+                    paddingLeft: '20px',
+                    marginTop: '4px',
+                    marginBottom: '4px',
+                  }}>
+                    {item.submenu.map((subItem) => (
+                      <div
+                        key={subItem.id}
+                        onClick={() => setActivePage(subItem.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          marginBottom: '2px',
+                          cursor: 'pointer',
+                          backgroundColor: activePage === subItem.id ? '#2563eb' : 'rgba(255,255,255,0.05)', // blue-600
+                          color: activePage === subItem.id ? 'white' : '#d1d5db', // gray-300
+                          transition: 'all 0.2s',
+                          marginLeft: '12px',
+                          borderLeft: activePage === subItem.id ? '2px solid #3b82f6' : '2px solid transparent'
+                        }}
+                      >
+                        <subItem.icon size={16} style={{
+                          marginRight: '10px',
+                          color: activePage === subItem.id ? '#93c5fd' : '#9ca3af' // blue-300
+                        }} />
+                        <span style={{
+                          fontSize: '13px',
+                          color: activePage === subItem.id ? 'white' : '#9ca3af'
+                        }}>
+                          {subItem.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        ))}
+            );
+          })}
+        </div>
       </nav>
 
-      <div className="p-4 border-t border-gray-200">
+      {/* Footer */}
+      <div style={{
+        padding: '16px',
+        borderTop: '1px solid #374151',
+        backgroundColor: '#1f2937' // gray-800
+      }}>
         <button
           onClick={logout}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 w-full"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            width: '100%',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            backgroundColor: 'transparent',
+            border: 'none',
+            color: '#9ca3af',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
         >
-          <LogOut size={20} />
-          <span>Logout</span>
+          <LogOut size={18} style={{
+            marginRight: '12px',
+            color: '#9ca3af'
+          }} />
+          <span style={{
+            fontSize: '14px',
+            fontWeight: '500',
+            color: 'white'
+          }}>
+            Sign Out
+          </span>
         </button>
       </div>
     </div>

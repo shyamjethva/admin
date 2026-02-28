@@ -23,7 +23,7 @@ import { Reports } from './components/reports/Reports';
 import { ReportTest } from './components/ReportTest';
 import { HelpSupport } from './components/HelpSupport';
 import { WhatChat } from './components/WhatChat';
-import { SimpleClockInOut } from './components/SimpleClockInOut';
+// Removed SimpleClockInOut - now integrated into Dashboard
 import { ClientManagement } from './components/ClientManagement';
 import { Profile } from './components/Profile';
 import { WeeklyWorkPlan } from './components/WeeklyWorkPlan';
@@ -32,10 +32,10 @@ import { Holidays } from './components/Holidays';
 import { Birthdays } from './components/Birthdays';
 import { Settings } from './components/Settings';
 import { Notifications } from './components/Notifications';
+import { Celebrations } from './components/Celebrations';
 import { DataProvider } from './context/DataContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
-import { Toaster } from './components/ui/sonner';
 
 function AppContent() {
   const [activePage, setActivePage] = useState('dashboard');
@@ -65,8 +65,8 @@ function AppContent() {
         return <Shifts />;
       case 'employee-clock-records':
         return <EmployeeClockRecords />;
-      case 'clock-in-out':
-        return <SimpleClockInOut />;
+      // case 'clock-in-out':
+      //   return <SimpleClockInOut />; // Removed - now in Dashboard
       case 'leave-requests':
         return <LeaveRequests />;
       case 'leave-types':
@@ -91,6 +91,8 @@ function AppContent() {
         return <WhatChat />;
       case 'announcements':
         return <Announcements />;
+      case 'holidays-birthdays':
+        return <HolidaysAndBirthdays />;
       case 'holidays':
         return <Holidays />;
       case 'birthdays':
@@ -137,7 +139,6 @@ export default function App() {
   return (
     <AuthProvider>
       <AppContent />
-      <Toaster />
     </AuthProvider>
   );
 }

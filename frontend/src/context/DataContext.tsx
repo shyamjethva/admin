@@ -8,7 +8,7 @@ import {
 import { useAuth } from "./AuthContext";
 import api from "../services/api";
 import { taskService } from "../services/taskService";
-import { whatchatService } from "../services/whatchatservices.ts";
+import { whatchatService } from "../services/whatchatservices";
 
 // Simple interfaces
 interface Employee {
@@ -133,7 +133,7 @@ interface ChatMessage {
   timestamp?: string;
 }
 
-interface Announcement {
+export interface Announcement {
   id: string;
   title: string;
   content: string;
@@ -181,6 +181,8 @@ interface DataContextType {
   fetchData: (module: string, setter: any, initial: any) => Promise<void>;
   addClockRecord: (data: any) => Promise<any>;
   updateClockRecord: (id: string, data: any) => Promise<any>;
+  breakIn: (employeeId: string) => Promise<any>;
+  breakOut: (employeeId: string) => Promise<any>;
   setClockRecords: any;
   initialClockRecords: any[];
   addEmployee: (employee: any) => Promise<void>;
@@ -673,7 +675,7 @@ export const DataProvider = ({ children }) => {
 
       console.log('🔄 Adding leave request with payload:', payload);
       await api.post("/leaves", payload);
-      await fetchData("leaveRequests", setLeaveRequests, initialLeaveRequests);
+      await fetchData("leaves", setLeaveRequests, initialLeaveRequests);
     } catch (err) {
       console.error("addLeaveRequest failed:", err?.response?.data || err);
       throw err;
@@ -688,7 +690,7 @@ export const DataProvider = ({ children }) => {
 
       console.log('🔄 Updating leave request with payload:', payload);
       await api.put(`/leaves/${id}`, payload);
-      await fetchData("leaveRequests", setLeaveRequests, initialLeaveRequests);
+      await fetchData("leaves", setLeaveRequests, initialLeaveRequests);
     } catch (err) {
       console.error("updateLeaveRequest failed:", err?.response?.data || err);
       throw err;
@@ -699,7 +701,7 @@ export const DataProvider = ({ children }) => {
     try {
       console.log('🔄 Deleting leave request with id:', id);
       await api.delete(`/leaves/${id}`);
-      await fetchData("leaveRequests", setLeaveRequests, initialLeaveRequests);
+      await fetchData("leaves", setLeaveRequests, initialLeaveRequests);
     } catch (err) {
       console.error("deleteLeaveRequest failed:", err?.response?.data || err);
       throw err;
@@ -1260,6 +1262,28 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const breakIn = async (employeeId: string) => {
+    try {
+      const response = await api.post("/clock/break-in", { employeeId });
+      fetchData("attendance", setClockRecords, []);
+      return response.data;
+    } catch (error: any) {
+      console.error("Error starting break:", error);
+      throw error;
+    }
+  };
+
+  const breakOut = async (employeeId: string) => {
+    try {
+      const response = await api.post("/clock/break-out", { employeeId });
+      fetchData("attendance", setClockRecords, []);
+      return response.data;
+    } catch (error: any) {
+      console.error("Error ending break:", error);
+      throw error;
+    }
+  };
+
   // Working time calculation
   useEffect(() => {
     let interval;
@@ -1348,6 +1372,8 @@ export const DataProvider = ({ children }) => {
     fetchData,
     addClockRecord,
     updateClockRecord,
+    breakIn,
+    breakOut,
     setClockRecords,
     initialClockRecords,
     addEmployee,

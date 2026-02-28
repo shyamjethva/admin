@@ -9,6 +9,7 @@ type FormState = {
   employeeId: string;
   employeeName: string;
   leaveTypeId: string; // ✅ ObjectId string
+  leaveTypeCode: string; // Added leave type code
   startDate: string;
   endDate: string;
   days: number;
@@ -53,6 +54,7 @@ export function LeaveRequests() {
     employeeId: user?.id || "",
     employeeName: user?.name || "",
     leaveTypeId: "",
+    leaveTypeCode: "",
     startDate: "",
     endDate: "",
     days: 1,
@@ -102,6 +104,7 @@ export function LeaveRequests() {
     const end = lr.endDate || lr.toDate || "";
     const leaveTypeObjOrId = lr.leaveTypeId ?? lr.leaveType; // both possible
     const leaveTypeLabel = getLeaveTypeLabel(leaveTypeObjOrId);
+    const leaveTypeCode = lr.leaveTypeCode || "";
 
     const employeeId = getId(lr.employeeId);
     const employeeName = lr.employeeName || getEmployeeName(lr.employeeId);
@@ -114,6 +117,7 @@ export function LeaveRequests() {
       startDate: start,
       endDate: end,
       leaveTypeLabel,
+      leaveTypeCode,
       appliedOn: lr.appliedOn || safeDateOnly(lr.createdAt || lr.updatedAt || new Date()),
       status: lr.status || "pending",
       days: Number(lr.days || calcDays(start, end) || 1),
@@ -141,6 +145,7 @@ export function LeaveRequests() {
       employeeId: user?.id || "",
       employeeName: user?.name || "",
       leaveTypeId: "",
+      leaveTypeCode: "",
       startDate: "",
       endDate: "",
       days: 1,
@@ -170,6 +175,7 @@ export function LeaveRequests() {
       employeeId: formData.employeeId,
       employeeName: formData.employeeName,
       leaveTypeId: formData.leaveTypeId,
+      leaveTypeCode: formData.leaveTypeCode, // Added leave type code
       fromDate: formData.startDate,
       toDate: formData.endDate,
       reason: formData.reason,
@@ -186,7 +192,7 @@ export function LeaveRequests() {
     addNotification({
       type: "leave",
       title: "New Leave Request",
-      message: `${formData.employeeName} has requested ${leaveTypeName} from ${formData.startDate} to ${formData.endDate}`,
+      message: `${formData.employeeName} has requested ${leaveTypeName} from ${formData.startDate ? new Date(formData.startDate).toLocaleDateString('en-GB') : ''} to ${formData.endDate ? new Date(formData.endDate).toLocaleDateString('en-GB') : ''}`,
       priority: "high",
       relatedId: Date.now().toString(),
       actionUrl: "leave-requests",
@@ -202,7 +208,7 @@ export function LeaveRequests() {
     addNotification({
       type: "leave",
       title: "Leave Request Approved",
-      message: `Leave approved for ${req.employeeName} (${req.leaveTypeLabel}) from ${req.startDate} to ${req.endDate}`,
+      message: `Leave approved for ${req.employeeName} (${req.leaveTypeLabel}) from ${req.startDate ? new Date(req.startDate).toLocaleDateString('en-GB') : ''} to ${req.endDate ? new Date(req.endDate).toLocaleDateString('en-GB') : ''}`,
       priority: "medium",
       relatedId: id,
       actionUrl: "leave-requests",
@@ -218,7 +224,7 @@ export function LeaveRequests() {
     addNotification({
       type: "leave",
       title: "Leave Request Rejected",
-      message: `Leave rejected for ${req.employeeName} (${req.leaveTypeLabel}) from ${req.startDate} to ${req.endDate}`,
+      message: `Leave rejected for ${req.employeeName} (${req.leaveTypeLabel}) from ${req.startDate ? new Date(req.startDate).toLocaleDateString('en-GB') : ''} to ${req.endDate ? new Date(req.endDate).toLocaleDateString('en-GB') : ''}`,
       priority: "high",
       relatedId: id,
       actionUrl: "leave-requests",
@@ -281,15 +287,15 @@ export function LeaveRequests() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                   <div>
                     <p className="text-sm text-gray-600">Leave Type</p>
-                    <p className="text-sm font-medium text-gray-800">{req.leaveTypeLabel}</p>
+                    <p className="text-sm font-medium text-gray-800">{req.leaveTypeLabel} {req.leaveTypeCode && `(${req.leaveTypeCode})`}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Start Date</p>
-                    <p className="text-sm font-medium text-gray-800">{req.startDate || "-"}</p>
+                    <p className="text-sm font-medium text-gray-800">{req.startDate ? new Date(req.startDate).toLocaleDateString('en-GB') : "-"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">End Date</p>
-                    <p className="text-sm font-medium text-gray-800">{req.endDate || "-"}</p>
+                    <p className="text-sm font-medium text-gray-800">{req.endDate ? new Date(req.endDate).toLocaleDateString('en-GB') : "-"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Days</p>
@@ -302,7 +308,7 @@ export function LeaveRequests() {
                   <p className="text-sm text-gray-800 mt-1">{req.reason || "-"}</p>
                 </div>
 
-                <p className="text-xs text-gray-500 mt-3">Applied on: {req.appliedOn}</p>
+                <p className="text-xs text-gray-500 mt-3">Applied on: {req.appliedOn ? new Date(req.appliedOn).toLocaleDateString('en-GB') : '-'}</p>
               </div>
 
               {canManageLeaves && req.status === "pending" && (
@@ -354,7 +360,14 @@ export function LeaveRequests() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
               <select
                 value={formData.leaveTypeId}
-                onChange={(e) => setFormData((p) => ({ ...p, leaveTypeId: e.target.value }))}
+                onChange={(e) => {
+                  const selectedLeaveType = safeLeaveTypes.find((lt: any) => (lt.id || lt._id) === e.target.value);
+                  setFormData((p) => ({
+                    ...p,
+                    leaveTypeId: e.target.value,
+                    leaveTypeCode: selectedLeaveType ? (selectedLeaveType.code || '') : ''
+                  }));
+                }}
                 className="w-full px-3 py-2 border rounded-lg"
                 required
               >
@@ -366,6 +379,13 @@ export function LeaveRequests() {
                 ))}
               </select>
             </div>
+
+            {/* Leave Type Code - Hidden input to store the code */}
+            <input
+              type="hidden"
+              value={formData.leaveTypeCode}
+              readOnly
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <div>

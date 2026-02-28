@@ -12,7 +12,7 @@ export const clockIn = async (req, res) => {
         const { employeeId, employeeName } = req.body;
         console.log('🔵 CLOCK IN REQUEST:', { employeeId, employeeName });
 
-        // Validate required fields for non-absent status
+        // Validate required fields
         if (!employeeId) {
             return res.status(400).json({
                 success: false,
@@ -24,52 +24,76 @@ export const clockIn = async (req, res) => {
         const now = new Date();
         const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-        // Capture the EXACT time when the request is processed (when button is clicked)
+        // Capture the EXACT time when the request is processed
         const currentTime = new Date();
         const clockInTime = currentTime.toTimeString().split(' ')[0]; // HH:MM:SS format
-        const clockInTimestamp = currentTime; // Full timestamp with milliseconds
+        const clockInTimestamp = currentTime; // Full timestamp
 
         console.log('⏰ Clock in time being recorded:', clockInTime);
         console.log('⏰ Clock in timestamp being recorded:', clockInTimestamp);
-        console.log('⏰ Current time when processing request:', new Date());
 
         // Check if attendance record already exists for today
         let query = { date: today };
 
-        // Handle employeeId properly - check if it's a valid ObjectId string
+        // Handle employeeId properly
         if (mongoose.Types.ObjectId.isValid(employeeId)) {
-            console.log('✅ Valid ObjectId, converting to ObjectId');
             query.employeeId = new mongoose.Types.ObjectId(employeeId);
         } else {
-            console.log('⚠️ Invalid ObjectId format, using string');
             query.employeeId = employeeId;
         }
 
-        console.log('🔍 Attendance query:', JSON.stringify(query, null, 2));
-        console.log('⏰ Clock in time being recorded:', clockInTime);
-        console.log('⏰ Timestamp being recorded:', clockInTimestamp);
-
         let attendance = await Attendance.findOne(query);
 
+        // Validation: Cannot clock in if already working or on break
+        if (attendance && (attendance.status === "clocked_in" || attendance.status === "on_break")) {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot clock in while already working or on break"
+            });
+        }
+
         if (attendance) {
-            // If record exists, update clockIn time
+            // Add new session
+            attendance.sessions.push({
+                clockInAt: clockInTimestamp,
+                clockOutAt: null,
+                durationSeconds: 0
+            });
+
+            // Update fields
             attendance.checkIn = clockInTime;
             attendance.checkInTimestamp = clockInTimestamp;
-            attendance.status = "present";
+            attendance.status = "clocked_in";
+            attendance.currentSessionOpen = true;
+            attendance.lastClockInAt = clockInTimestamp;
+
             attendance = await attendance.save();
-            console.log('✅ Updated existing attendance record with current time:', clockInTime);
+            console.log('✅ Added new session to existing attendance record');
         } else {
             // Create new attendance record
             attendance = await Attendance.create({
                 employeeId,
                 employeeName: employeeName || "",
                 date: today,
+                status: "clocked_in",
+                sessions: [{
+                    clockInAt: clockInTimestamp,
+                    clockOutAt: null,
+                    durationSeconds: 0
+                }],
+                breaks: [],
+                totals: {
+                    totalClockSeconds: 0,
+                    totalBreakSeconds: 0,
+                    workSeconds: 0
+                },
                 checkIn: clockInTime,
                 checkInTimestamp: clockInTimestamp,
-                status: "present",
+                currentSessionOpen: true,
+                lastClockInAt: clockInTimestamp,
                 hours: 0
             });
-            console.log('✅ Created new attendance record with current time:', clockInTime);
+            console.log('✅ Created new attendance record with session');
         }
 
         // Populate employee details
@@ -86,8 +110,7 @@ export const clockIn = async (req, res) => {
         console.error('❌ Error stack:', err.stack);
         res.status(500).json({
             success: false,
-            message: err.message,
-            error: err.name
+            message: err.message
         });
     }
 };
@@ -100,14 +123,13 @@ export const clockOut = async (req, res) => {
         const now = new Date();
         const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-        // Capture the EXACT time when the request is processed (when button is clicked)
+        // Capture the EXACT time when the request is processed
         const currentTime = new Date();
         const clockOutTime = currentTime.toTimeString().split(' ')[0]; // HH:MM:SS format
-        const clockOutTimestamp = currentTime; // Full timestamp with milliseconds
+        const clockOutTimestamp = currentTime; // Full timestamp
 
         console.log('⏰ Clock out time being recorded:', clockOutTime);
         console.log('⏰ Clock out timestamp being recorded:', clockOutTimestamp);
-        console.log('⏰ Current time when processing request:', new Date());
 
         // Find today's attendance record
         let query = { date: today };
@@ -128,31 +150,56 @@ export const clockOut = async (req, res) => {
             });
         }
 
-        if (attendance.checkOut) {
+        // Validation: Cannot clock out while on break
+        if (attendance.status === "on_break") {
             return res.status(400).json({
                 success: false,
-                message: "Already clocked out today"
+                message: "Cannot clock out while on break"
             });
         }
 
-        // Update clockOut time and timestamp
-        attendance.checkOut = clockOutTime;
-        attendance.checkOutTimestamp = clockOutTimestamp; // Add the checkout timestamp
-
-        // Calculate hours worked
-        if (attendance.checkIn) {
-            const [inHour, inMin] = attendance.checkIn.split(':').map(Number);
-            const [outHour, outMin] = clockOutTime.split(':').map(Number);
-
-            let totalMinutes = (outHour * 60 + outMin) - (inHour * 60 + inMin);
-
-            // Handle overnight shifts
-            if (totalMinutes < 0) {
-                totalMinutes += 24 * 60; // Add 24 hours
-            }
-
-            attendance.hours = Math.max(0, totalMinutes / 60);
+        // Validation: Must have open session
+        if (!attendance.currentSessionOpen) {
+            return res.status(400).json({
+                success: false,
+                message: "No active session to clock out from"
+            });
         }
+
+        // Validation: Minimum 1 minute rule
+        if (attendance.lastClockInAt) {
+            const timeDiff = (currentTime.getTime() - attendance.lastClockInAt.getTime()) / 1000;
+            if (timeDiff < 60) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Must wait at least 1 minute after clock in (wait ${Math.ceil(60 - timeDiff)} more seconds)`
+                });
+            }
+        }
+
+        // Close current session
+        const currentSession = attendance.sessions[attendance.sessions.length - 1];
+        if (currentSession && !currentSession.clockOutAt) {
+            currentSession.clockOutAt = clockOutTimestamp;
+            const duration = (clockOutTimestamp.getTime() - currentSession.clockInAt.getTime()) / 1000;
+            currentSession.durationSeconds = Math.max(0, duration);
+
+            // Update totals
+            attendance.totals.totalClockSeconds += currentSession.durationSeconds;
+        }
+
+        // Calculate work seconds (total clock time - total break time)
+        attendance.totals.workSeconds = Math.max(0, attendance.totals.totalClockSeconds - attendance.totals.totalBreakSeconds);
+
+        // Update legacy fields
+        attendance.checkOut = clockOutTime;
+        attendance.checkOutTimestamp = clockOutTimestamp;
+        attendance.hours = attendance.totals.workSeconds / 3600;
+
+        // Update status
+        attendance.status = "clocked_out";
+        attendance.currentSessionOpen = false;
+        attendance.currentBreakOpen = false;
 
         const updated = await attendance.save();
 
@@ -170,6 +217,180 @@ export const clockOut = async (req, res) => {
     } catch (err) {
         console.error('❌ CLOCK OUT ERROR:', err);
         console.error('❌ Error stack:', err.stack);
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+};
+
+// Break In - Start a break during working time
+export const breakIn = async (req, res) => {
+    try {
+        const { employeeId } = req.body;
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const currentTime = new Date();
+
+        // Find today's attendance record
+        let query = { date: today };
+        if (mongoose.Types.ObjectId.isValid(employeeId)) {
+            query.employeeId = new mongoose.Types.ObjectId(employeeId);
+        } else {
+            query.employeeId = employeeId;
+        }
+
+        const attendance = await Attendance.findOne(query);
+
+        if (!attendance) {
+            return res.status(400).json({
+                success: false,
+                message: "Must clock in before taking a break"
+            });
+        }
+
+        // Validation: Must be working to take a break
+        if (attendance.status !== "clocked_in") {
+            return res.status(400).json({
+                success: false,
+                message: "Can only take break while working"
+            });
+        }
+
+        // Validation: Must have open session
+        if (!attendance.currentSessionOpen) {
+            return res.status(400).json({
+                success: false,
+                message: "No active session"
+            });
+        }
+
+        // Validation: Cannot have open break
+        if (attendance.currentBreakOpen) {
+            return res.status(400).json({
+                success: false,
+                message: "Already on break"
+            });
+        }
+
+        // Add break record
+        attendance.breaks.push({
+            breakInAt: currentTime,
+            breakOutAt: null,
+            durationSeconds: 0
+        });
+
+        // Update status and convenience fields
+        attendance.status = "on_break";
+        attendance.currentBreakOpen = true;
+        attendance.breakIn = currentTime.toTimeString().split(' ')[0];
+        attendance.breakOut = null; // Reset breakout when new break starts
+
+        const updated = await attendance.save();
+
+        const populated = await Attendance.findById(updated._id)
+            .populate("employeeId", "name email");
+
+        res.json({
+            success: true,
+            data: populated,
+            message: "Break started successfully"
+        });
+    } catch (err) {
+        console.error('❌ BREAK IN ERROR:', err);
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+};
+
+// Break Out - End a break and return to work
+export const breakOut = async (req, res) => {
+    try {
+        const { employeeId } = req.body;
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const currentTime = new Date();
+
+        // Find today's attendance record
+        let query = { date: today };
+        if (mongoose.Types.ObjectId.isValid(employeeId)) {
+            query.employeeId = new mongoose.Types.ObjectId(employeeId);
+        } else {
+            query.employeeId = employeeId;
+        }
+
+        const attendance = await Attendance.findOne(query);
+
+        if (!attendance) {
+            return res.status(404).json({
+                success: false,
+                message: "No attendance record found"
+            });
+        }
+
+        // Validation: Must be on break
+        if (attendance.status !== "on_break") {
+            return res.status(400).json({
+                success: false,
+                message: "Not currently on break"
+            });
+        }
+
+        // Validation: Must have open break
+        if (!attendance.currentBreakOpen) {
+            return res.status(400).json({
+                success: false,
+                message: "No active break to end"
+            });
+        }
+
+        // Validation: Minimum 1 minute rule for break
+        const latestBreak = attendance.breaks[attendance.breaks.length - 1];
+        if (latestBreak && latestBreak.breakInAt) {
+            const timeDiff = (currentTime.getTime() - latestBreak.breakInAt.getTime()) / 1000;
+            if (timeDiff < 60) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Must wait at least 1 minute after break in (wait ${Math.ceil(60 - timeDiff)} more seconds)`
+                });
+            }
+        }
+
+        // Close current break
+        const currentBreak = attendance.breaks[attendance.breaks.length - 1];
+        if (currentBreak && !currentBreak.breakOutAt) {
+            currentBreak.breakOutAt = currentTime;
+            const duration = (currentTime.getTime() - currentBreak.breakInAt.getTime()) / 1000;
+            currentBreak.durationSeconds = Math.max(0, duration);
+
+            // Update totals
+            attendance.totals.totalBreakSeconds += currentBreak.durationSeconds;
+        }
+
+        // Calculate work seconds
+        attendance.totals.workSeconds = Math.max(0, attendance.totals.totalClockSeconds - attendance.totals.totalBreakSeconds);
+
+        // Update status and convenience fields
+        attendance.status = "clocked_in";
+        attendance.currentBreakOpen = false;
+        attendance.breakOut = currentTime.toTimeString().split(' ')[0];
+        attendance.breakDuration = Math.round(attendance.totals.totalBreakSeconds / 60);
+        attendance.hours = attendance.totals.workSeconds / 3600;
+
+        const updated = await attendance.save();
+
+        const populated = await Attendance.findById(updated._id)
+            .populate("employeeId", "name email");
+
+        res.json({
+            success: true,
+            data: populated,
+            message: "Break ended successfully"
+        });
+    } catch (err) {
+        console.error('❌ BREAK OUT ERROR:', err);
         res.status(500).json({
             success: false,
             message: err.message

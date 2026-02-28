@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { 
-  Bell, 
-  CheckCheck, 
-  Trash2, 
+import {
+  Bell,
+  CheckCheck,
+  Trash2,
   X,
   Calendar,
   ListTodo,
@@ -13,91 +13,68 @@ import {
   PartyPopper,
   Clock,
   Briefcase,
-  AlertCircle
+  AlertCircle,
+  MessageSquare,
 } from 'lucide-react';
 import { useNotifications, Notification } from '../context/NotificationContext';
-import { Button } from './ui/button';
 
 interface NotificationDropdownProps {
   onNavigate?: (page: string) => void;
 }
 
 export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications, getLatestNotifications } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
+  // Get latest 20 notifications for display
+  const latestNotifications = getLatestNotifications(20);
+
+  // Close on outside click
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
   const getNotificationIcon = (type: Notification['type']) => {
+    const cls = 'w-5 h-5';
     switch (type) {
-      case 'leave':
-        return <Calendar className="w-5 h-5" />;
-      case 'task':
-        return <ListTodo className="w-5 h-5" />;
-      case 'announcement':
-        return <Megaphone className="w-5 h-5" />;
-      case 'interview':
-        return <UserCheck className="w-5 h-5" />;
-      case 'payroll':
-        return <Wallet className="w-5 h-5" />;
-      case 'birthday':
-        return <Cake className="w-5 h-5" />;
-      case 'anniversary':
-        return <PartyPopper className="w-5 h-5" />;
-      case 'holiday':
-        return <Calendar className="w-5 h-5" />;
-      case 'clock':
-        return <Clock className="w-5 h-5" />;
-      case 'client':
-        return <Briefcase className="w-5 h-5" />;
-      default:
-        return <AlertCircle className="w-5 h-5" />;
+      case 'leave': return <Calendar className={cls} />;
+      case 'task': return <ListTodo className={cls} />;
+      case 'announcement': return <Megaphone className={cls} />;
+      case 'interview': return <UserCheck className={cls} />;
+      case 'payroll': return <Wallet className={cls} />;
+      case 'birthday': return <Cake className={cls} />;
+      case 'anniversary': return <PartyPopper className={cls} />;
+      case 'holiday': return <Calendar className={cls} />;
+      case 'clock': return <Clock className={cls} />;
+      case 'client': return <Briefcase className={cls} />;
+      case 'message': return <MessageSquare className={cls} />;
+      default: return <AlertCircle className={cls} />;
     }
   };
 
-  const getNotificationColor = (type: Notification['type'], priority: Notification['priority']) => {
-    if (priority === 'urgent') return 'text-red-600 bg-red-50';
-    if (priority === 'high') return 'text-orange-600 bg-orange-50';
-    
+  const getIconColors = (type: Notification['type'], priority: Notification['priority']) => {
+    if (priority === 'urgent') return { bg: 'bg-red-100', text: 'text-red-600' };
+    if (priority === 'high') return { bg: 'bg-orange-100', text: 'text-orange-600' };
     switch (type) {
-      case 'leave':
-        return 'text-blue-600 bg-blue-50';
-      case 'task':
-        return 'text-purple-600 bg-purple-50';
-      case 'announcement':
-        return 'text-indigo-600 bg-indigo-50';
-      case 'interview':
-        return 'text-green-600 bg-green-50';
-      case 'payroll':
-        return 'text-emerald-600 bg-emerald-50';
-      case 'birthday':
-        return 'text-pink-600 bg-pink-50';
-      case 'anniversary':
-        return 'text-purple-600 bg-purple-50';
-      case 'holiday':
-        return 'text-cyan-600 bg-cyan-50';
-      case 'clock':
-        return 'text-yellow-600 bg-yellow-50';
-      case 'client':
-        return 'text-gray-600 bg-gray-50';
-      default:
-        return 'text-gray-600 bg-gray-50';
+      case 'leave': return { bg: 'bg-blue-100', text: 'text-blue-600' };
+      case 'task': return { bg: 'bg-purple-100', text: 'text-purple-600' };
+      case 'announcement': return { bg: 'bg-indigo-100', text: 'text-indigo-600' };
+      case 'interview': return { bg: 'bg-green-100', text: 'text-green-600' };
+      case 'payroll': return { bg: 'bg-emerald-100', text: 'text-emerald-600' };
+      case 'birthday': return { bg: 'bg-pink-100', text: 'text-pink-600' };
+      case 'anniversary': return { bg: 'bg-purple-100', text: 'text-purple-600' };
+      case 'holiday': return { bg: 'bg-cyan-100', text: 'text-cyan-600' };
+      case 'clock': return { bg: 'bg-yellow-100', text: 'text-yellow-600' };
+      case 'client': return { bg: 'bg-gray-100', text: 'text-gray-600' };
+      case 'message': return { bg: 'bg-teal-100', text: 'text-teal-600' };
+      default: return { bg: 'bg-gray-100', text: 'text-gray-600' };
     }
   };
 
@@ -108,7 +85,6 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
-
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
@@ -126,118 +102,134 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Icon Button */}
+
+      {/* ── Bell Button ── */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+        onClick={() => setIsOpen(prev => !prev)}
+        className={`relative p-2.5 rounded-xl transition-all duration-200 ${isOpen ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}
+        aria-label="Notifications"
       >
-        <Bell size={20} />
+        <Bell size={22} />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
-            <span className="text-[10px] font-bold text-white">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
+          <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white leading-none shadow">
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown Panel */}
+      {/*── Dropdown Panel── */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 max-h-[600px] flex flex-col">
+        <div
+          className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-[9999] flex flex-col overflow-hidden"
+          style={{ width: '380px', maxWidth: '95vw', maxHeight: '500px' }}
+        >
+
           {/* Header */}
-          <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0 bg-gray-50">
             <div>
-              <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
-              {unreadCount > 0 && (
-                <p className="text-xs text-gray-500">{unreadCount} unread</p>
-              )}
+              <h3 className="text-base font-bold text-gray-900">Notifications</h3>
+              {unreadCount > 0
+                ? <p className="text-xs text-blue-600 font-medium mt-0.5">{unreadCount} unread</p>
+                : <p className="text-xs text-gray-500 font-medium mt-0.5">All caught up</p>
+              }
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               {notifications.length > 0 && (
                 <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <button
                     onClick={markAllAsRead}
-                    className="text-xs h-7 px-2"
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
                   >
-                    <CheckCheck className="w-3 h-3 mr-1" />
+                    <CheckCheck className="w-3 h-3" />
                     Mark all read
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  </button>
+                  <button
                     onClick={clearAllNotifications}
-                    className="text-xs h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-100 rounded-md transition-colors"
+                    title="Delete all"
                   >
-                    <Trash2 className="w-3 h-3 mr-1" />
-                    Clear all
-                  </Button>
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 </>
               )}
             </div>
           </div>
 
-          {/* Notifications List */}
-          <div className="overflow-y-auto flex-1">
-            {notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 px-4">
-                <Bell className="w-12 h-12 text-gray-300 mb-3" />
-                <p className="text-sm font-medium text-gray-900">No notifications</p>
-                <p className="text-xs text-gray-500 text-center mt-1">
-                  You're all caught up! Check back later for updates.
-                </p>
+          {/* Body – Scrollable */}
+          <div className="overflow-y-auto flex-1" style={{ maxHeight: '420px' }}>
+            {latestNotifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                  <Bell className="w-6 h-6 text-gray-300" />
+                </div>
+                <p className="text-sm font-medium text-gray-600">No notifications</p>
+                <p className="text-xs text-gray-400 mt-1">You're all caught up!</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer relative ${
-                      !notification.read ? 'bg-blue-50/30' : ''
-                    }`}
-                    onClick={() => handleNotificationClick(notification)}
-                  >
-                    <div className="flex gap-3">
-                      {/* Icon */}
-                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${getNotificationColor(notification.type, notification.priority)}`}>
+              <div>
+                {latestNotifications.map((notification) => {
+                  const { bg, text } = getIconColors(notification.type, notification.priority);
+                  return (
+                    <div
+                      key={notification.id}
+                      className={`group flex items-start gap-3 px-4 py-3.5 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors ${!notification.read ? 'bg-blue-25' : ''}`}
+                      onClick={() => handleNotificationClick(notification)}
+                    >
+                      {/* Icon Badge */}
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${bg} ${text} mt-0.5`}>
                         {getNotificationIcon(notification.type)}
                       </div>
 
-                      {/* Content */}
+                      {/* Text */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-sm font-semibold text-gray-900 line-clamp-1">
-                            {notification.title}
-                          </h4>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteNotification(notification.id);
-                            }}
-                            className="text-gray-400 hover:text-red-600 transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+                          <div className="flex-1">
+                            {notification.type === 'message' ? (
+                              <p className={`text-sm font-medium leading-tight ${!notification.read ? 'text-gray-900' : 'text-gray-700'}`}>
+                                {notification.title.replace('New message from ', '')}
+                              </p>
+                            ) : (
+                              <p className={`text-sm font-medium leading-tight ${!notification.read ? 'text-gray-900' : 'text-gray-700'}`}>
+                                {notification.title}
+                              </p>
+                            )}
+                          </div>
+                          {/* Unread dot */}
+                          {!notification.read && (
+                            <span className="mt-1 flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full" />
+                          )}
                         </div>
-                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                        <p className="text-xs font-medium text-gray-800 mt-1 line-clamp-1 leading-tight">
                           {notification.message}
                         </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs text-gray-500">
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="text-[10px] text-gray-400 font-medium">
                             {formatTimestamp(notification.timestamp)}
-                          </span>
-                          {!notification.read && (
-                            <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                          </p>
+                          {notification.type === 'message' && (
+                            <span className="text-[9px] font-bold text-teal-600 bg-teal-100 px-1.5 py-0.5 rounded-full">
+                              MESSAGE
+                            </span>
                           )}
                         </div>
                       </div>
+
+                      {/* X button – visible on hover */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
+                        className="flex-shrink-0 mt-0.5 p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all"
+                        title="Delete"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
+
+          {/* Footer - Removed as per requirements */}
         </div>
       )}
     </div>
