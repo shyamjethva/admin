@@ -23,7 +23,8 @@ import chatRoutes from "./routes/whatchatroutes.js";
 import chatNotificationRoutes from "./routes/chatnotificationroutes.js";
 
 import clientRoutes from "./routes/clientroutes.js";
-import celebrationroutes from "./routes/celebrationroutes.js";
+import holidayRoutes from "./routes/holidayroutes.js";
+import birthdayRoutes from "./routes/birthdayroutes.js";
 import notificationroutes from "./routes/notificationroutes.js";
 import interviewRoutes from "./routes/interviewroutes.js";
 import salaryComponentRoutes from "./routes/salarycomponentsroutes.js";
@@ -74,7 +75,8 @@ app.use("/api/payroll", payrollRoutes);
 
 
 app.use("/api/clients", clientRoutes);
-app.use("/api/celebrations", celebrationroutes);
+app.use("/api/holidays", holidayRoutes);
+app.use("/api/birthdays", birthdayRoutes);
 app.use("/api/notifications", notificationroutes);
 app.use("/api/chat-notifications", chatNotificationRoutes);
 app.use("/api/salary-components", salaryComponentRoutes);

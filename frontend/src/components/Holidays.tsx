@@ -14,9 +14,8 @@ interface Holiday {
 }
 
 export function Holidays() {
-    console.log('Holidays component mounted');
     const { user } = useAuth();
-    const { holidays } = useData();
+    const { holidays, employees, departments } = useData();
     const [showModal, setShowModal] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [localHolidays, setLocalHolidays] = useState([]);
@@ -24,26 +23,12 @@ export function Holidays() {
 
     // Fetch holidays directly when refreshKey changes
     useEffect(() => {
-        console.log('useEffect triggered with refreshKey:', refreshKey);
         const fetchHolidays = async () => {
             try {
-                console.log('Fetching holidays with refreshKey:', refreshKey);
                 const result = await api.get('/celebrations?type=holiday');
-                console.log('Fetch holidays result:', result);
-                console.log('Full result object:', result);
-                console.log('Result status:', result?.status);
-                console.log('Result data:', result?.data);
-                console.log('Result data structure:', {
-                    hasData: !!result?.data,
-                    dataKeys: result?.data ? Object.keys(result.data) : [],
-                    hasItems: !!result?.data?.items,
-                    itemsLength: result?.data?.items?.length,
-                    itemsContent: result?.data?.items
-                });
 
                 // Handle different response structures - API returns data wrapper
                 const holidayData = result?.data?.items || result?.items || result?.data || [];
-                console.log('Setting localHolidays:', holidayData);
                 setLocalHolidays(holidayData);
             } catch (error) {
                 console.error('Error fetching holidays:', error);
@@ -57,6 +42,8 @@ export function Holidays() {
         title: '',
         date: '',
         description: '',
+        employeeName: '',
+        department: '',
     });
 
     const today = new Date();
@@ -88,6 +75,8 @@ export function Holidays() {
             title: '',
             date: '',
             description: '',
+            employeeName: '',
+            department: '',
         });
         setShowModal(true);
     };
@@ -101,6 +90,8 @@ export function Holidays() {
                 date: formData.date,
                 type: 'holiday',
                 description: formData.description,
+                employeeName: formData.employeeName,
+                department: formData.department,
             };
 
             console.log('Submitting holiday:', payload);
@@ -119,7 +110,7 @@ export function Holidays() {
             if (result && result.data?.success) {
                 setShowModal(false);
                 setEditingHoliday(null);
-                setFormData({ title: '', date: '', description: '' });
+                setFormData({ title: '', date: '', description: '', employeeName: '', department: '' });
                 setRefreshKey(prev => prev + 1);
                 alert(editingHoliday ? 'Holiday updated successfully!' : 'Holiday added successfully!');
             } else {
@@ -154,6 +145,8 @@ export function Holidays() {
             title: holiday.title,
             date: holiday.date.split('T')[0], // Format date for input
             description: holiday.description || '',
+            employeeName: holiday.employeeName || '',
+            department: holiday.department || '',
         });
         setShowModal(true);
     }; return (
@@ -254,7 +247,7 @@ export function Holidays() {
                     onClose={() => {
                         setShowModal(false);
                         setEditingHoliday(null);
-                        setFormData({ title: '', date: '', description: '' });
+                        setFormData({ title: '', date: '', description: '', employeeName: '', department: '' });
                     }}
                     title={editingHoliday ? "Edit Holiday" : "Add New Holiday"}
                 >
@@ -291,6 +284,59 @@ export function Holidays() {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 rows={3}
                             />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Employee
+                            </label>
+                            <select
+                                value={formData.employeeName}
+                                onChange={(e) => {
+                                    const selectedEmpName = e.target.value;
+                                    setFormData({ ...formData, employeeName: selectedEmpName });
+
+                                    // Auto-fill department when employee is selected
+                                    if (selectedEmpName) {
+                                        const selectedEmployee = employees.find(emp =>
+                                            emp.name === selectedEmpName
+                                        );
+                                        if (selectedEmployee && selectedEmployee.department) {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                employeeName: selectedEmpName,
+                                                department: selectedEmployee.department
+                                            }));
+                                        }
+                                    }
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            >
+                                <option value="">Select Employee (optional)</option>
+                                {employees.map((emp: any) => (
+                                    <option key={emp.id || emp._id} value={emp.name}>
+                                        {emp.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Department
+                            </label>
+                            <select
+                                value={formData.department}
+                                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            >
+                                <option value="">Select Department (optional)</option>
+                                {departments.map((dept: any) => (
+                                    <option key={dept.id} value={dept.name}>
+                                        {dept.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         <div className="flex justify-end gap-3 pt-4">

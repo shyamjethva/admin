@@ -20,11 +20,12 @@ type UploadFile = {
 export function WhatChat() {
   const { user } = useAuth();
   const { chatMessages = [], addChatMessage } = useData();
-  const { addNotification, unreadCount } = useNotifications();
+  const { addNotification, unreadCount, unreadCountsByType } = useNotifications();
 
   // Debug log to see chat messages
   console.log('Chat messages:', chatMessages);
   console.log('Unread count:', unreadCount);
+  console.log('Unread counts by type:', unreadCountsByType);
 
   const [message, setMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -48,55 +49,32 @@ export function WhatChat() {
 
         // Debug connection
         socket.on('connect', () => {
-          console.log('Socket connected:', socket.id);
+          console.log('✅ Socket connected:', socket.id);
         });
 
         socket.on('connect_error', (error) => {
-          console.error('Socket connection error:', error);
+          console.error('❌ Socket connection error:', error);
+        });
+
+        socket.on('disconnect', (reason) => {
+          console.log('🔌 Socket disconnected:', reason);
         });
 
         // Setup centralized listeners
         const cleanup = setupSocketListeners(
           socket,
           (data) => {
-            // Handle new messages
-            console.log('WhatChat received new_message:', data);
+            // Handle new messages - this is for real-time chat UI updates
+            console.log('✉️ WhatChat received new_message:', data);
 
-            // Show notification for received messages
-            if (data.senderId) {
-              const msgPreview = data.message || "Sent an attachment";
-              console.log('Creating notification for:', user?.name, 'Message:', msgPreview);
-
-              // Check if this message is from the current user
-              const isFromSelf = String(data.senderId) === String(user?.id);
-
-              // Show popup notification (for others' messages)
-              if (!isFromSelf) {
-                toast.info(`💬 ${data.senderName || 'Someone'} sent: ${msgPreview}`, {
-                  duration: 5000,
-                  position: 'top-right',
-                });
-              }
-
-              // Add to notification system for ALL messages (including own messages)
-              // Generate a truly unique ID for each notification to prevent duplicates
-              const uniqueNotificationId = `chat_${data.conversationId || 'general'}_${data.senderId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-              addNotification({
-                type: 'message',
-                title: `${isFromSelf ? 'You sent' : `New message from ${data.senderName || 'User'}`}`,
-                message: msgPreview,
-                priority: 'medium',
-                relatedId: uniqueNotificationId,
-                actionUrl: 'group-chat'
-              });
-
-              console.log('Notification created successfully');
-            }
+            // Don't create notifications here as chat_notification event handler takes care of that
+            // This event is primarily for updating the chat UI in real-time
           },
           (data) => {
             // Handle chat notifications (from socket)
             console.log('🔔 WhatChat received chat_notification:', data);
+            console.log('🔔 Current user role:', user?.role);
+            console.log('🔔 Sender role:', data.senderRole);
 
             // Check if this notification is for the current user
             if (data.senderId && String(data.senderId) !== String(user?.id)) {
@@ -105,6 +83,14 @@ export function WhatChat() {
 
               // Generate a unique ID for this notification
               const uniqueNotificationId = `chat_${data.conversationId || 'general'}_${data.senderId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+              console.log('Creating socket notification:', {
+                type: 'message',
+                title: `New message from ${data.senderName || 'User'}`,
+                message: msgPreview,
+                senderId: data.senderId,
+                currentUserId: user?.id
+              });
 
               addNotification({
                 type: 'message',

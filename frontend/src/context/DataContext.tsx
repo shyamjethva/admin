@@ -153,6 +153,23 @@ export interface Announcement {
   isActive?: boolean;
 }
 
+export interface Holiday {
+  id: string;
+  name: string;
+  date: string;
+  type: 'public' | 'optional' | string;
+  description: string;
+  department?: string;
+}
+
+export interface Birthday {
+  id: string;
+  employeeName: string;
+  employeeId?: string;
+  date: string;
+  department?: string;
+}
+
 interface DataContextType {
   employees: Employee[];
   departments: any[];
@@ -231,6 +248,12 @@ interface DataContextType {
   addAnnouncement: (announcement: any) => Promise<any>;
   updateAnnouncement: (id: string, announcement: any) => Promise<any>;
   deleteAnnouncement: (id: string) => Promise<any>;
+  addHoliday: (holiday: any) => Promise<any>;
+  updateHoliday: (id: string, holiday: any) => Promise<any>;
+  deleteHoliday: (id: string) => Promise<any>;
+  addBirthday: (birthday: any) => Promise<any>;
+  updateBirthday: (id: string, birthday: any) => Promise<any>;
+  deleteBirthday: (id: string) => Promise<any>;
 }
 
 const DataContext = createContext(undefined);
@@ -1187,16 +1210,189 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  // Holiday CRUD functions (using celebrations endpoint)
+  const addHoliday = async (holiday) => {
+    try {
+      // Ensure date is in proper ISO format
+      let formattedDate = holiday.date;
+      if (holiday.date && !(holiday.date instanceof Date)) {
+        // If it's a string, try to parse it
+        if (typeof holiday.date === 'string') {
+          formattedDate = new Date(holiday.date).toISOString();
+        } else {
+          formattedDate = new Date().toISOString(); // fallback to current date
+        }
+      } else if (holiday.date instanceof Date) {
+        formattedDate = holiday.date.toISOString();
+      }
+
+      // Map holiday fields to holiday collection payload
+      const holidayData = {
+        title: holiday.name || holiday.title,
+        type: holiday.type === 'public' || holiday.type === 'optional' ? holiday.type : 'public',
+        date: formattedDate,
+        description: holiday.description,
+        ...(holiday.department && { department: holiday.department }),
+        isActive: true
+      };
+      const response = await api.post("/holidays", holidayData);
+
+      await fetchData("holidays", setHolidays, []);
+      return response.data;
+    } catch (err) {
+      console.error("addHoliday failed:", err);
+      console.error("Error details:", err.response?.data || err.message);
+      throw err;
+    }
+  };
+
+  const updateHoliday = async (id, holiday) => {
+    try {
+      // Ensure date is in proper ISO format
+      let formattedDate = holiday.date;
+      if (holiday.date && !(holiday.date instanceof Date)) {
+        // If it's a string, try to parse it
+        if (typeof holiday.date === 'string') {
+          formattedDate = new Date(holiday.date).toISOString();
+        } else {
+          formattedDate = new Date().toISOString(); // fallback to current date
+        }
+      } else if (holiday.date instanceof Date) {
+        formattedDate = holiday.date.toISOString();
+      }
+
+      // Map holiday fields to holiday collection payload
+      const holidayData = {
+        title: holiday.name || holiday.title,
+        type: holiday.type === 'public' || holiday.type === 'optional' ? holiday.type : 'public',
+        date: formattedDate,
+        description: holiday.description,
+        ...(holiday.department && { department: holiday.department }),
+        isActive: true
+      };
+      const response = await api.put(`/holidays/${id}`, holidayData);
+
+      await fetchData("holidays", setHolidays, []);
+      return response.data;
+    } catch (err) {
+      console.error("updateHoliday failed:", err);
+      console.error("Error details:", err.response?.data || err.message);
+      throw err;
+    }
+  };
+
+  const deleteHoliday = async (id) => {
+    try {
+      const response = await api.delete(`/holidays/${id}`);
+
+      await fetchData("holidays", setHolidays, []);
+      return response.data;
+    } catch (err) {
+      console.error("deleteHoliday failed:", err);
+      throw err;
+    }
+  };
+
+  // Birthday CRUD functions (using celebrations endpoint)
+  const addBirthday = async (birthday) => {
+    try {
+      // Ensure date is in proper ISO format
+      let formattedDate = birthday.date;
+      if (birthday.date && !(birthday.date instanceof Date)) {
+        // If it's a string, try to parse it
+        if (typeof birthday.date === 'string') {
+          formattedDate = new Date(birthday.date).toISOString();
+        } else {
+          formattedDate = new Date().toISOString(); // fallback to current date
+        }
+      } else if (birthday.date instanceof Date) {
+        formattedDate = birthday.date.toISOString();
+      }
+
+      // Map birthday fields to birthday collection payload
+      const birthdayData = {
+        employeeName: birthday.employeeName || birthday.name || 'Birthday',
+        type: 'birthday',
+        date: formattedDate,
+        department: birthday.department,
+        // Only include user field if it's a valid ObjectId format
+        ...(birthday.employeeId && /^[0-9a-fA-F]{24}$/.test(birthday.employeeId) && { user: birthday.employeeId }),
+        ...(!birthday.employeeId && birthday.userId && /^[0-9a-fA-F]{24}$/.test(birthday.userId) && { user: birthday.userId }),
+        isActive: true
+      };
+
+      const response = await api.post("/birthdays", birthdayData);
+
+      await fetchData("birthdays", setBirthdays, []);
+      return response.data;
+    } catch (err) {
+      console.error("addBirthday failed:", err);
+      console.error("Error details:", err.response?.data || err.message);
+      throw err;
+    }
+  };
+
+  const updateBirthday = async (id, birthday) => {
+    try {
+      // Ensure date is in proper ISO format
+      let formattedDate = birthday.date;
+      if (birthday.date && !(birthday.date instanceof Date)) {
+        // If it's a string, try to parse it
+        if (typeof birthday.date === 'string') {
+          formattedDate = new Date(birthday.date).toISOString();
+        } else {
+          formattedDate = new Date().toISOString(); // fallback to current date
+        }
+      } else if (birthday.date instanceof Date) {
+        formattedDate = birthday.date.toISOString();
+      }
+
+      // Map birthday fields to collection fields
+      const birthdayData = {
+        employeeName: birthday.employeeName || birthday.name || 'Birthday',
+        type: 'birthday',
+        date: formattedDate,
+        department: birthday.department,
+        // Only include user field if it's a valid ObjectId format
+        ...(birthday.employeeId && /^[0-9a-fA-F]{24}$/.test(birthday.employeeId) && { user: birthday.employeeId }),
+        ...(!birthday.employeeId && birthday.userId && /^[0-9a-fA-F]{24}$/.test(birthday.userId) && { user: birthday.userId }),
+        isActive: true
+      };
+
+      const response = await api.put(`/birthdays/${id}`, birthdayData);
+
+      await fetchData("birthdays", setBirthdays, []);
+      return response.data;
+    } catch (err) {
+      console.error("updateBirthday failed:", err);
+      console.error("Error details:", err.response?.data || err.message);
+      throw err;
+    }
+  };
+
+  const deleteBirthday = async (id) => {
+    try {
+      const response = await api.delete(`/birthdays/${id}`);
+
+      await fetchData("birthdays", setBirthdays, []);
+      return response.data;
+    } catch (err) {
+      console.error("deleteBirthday failed:", err);
+      throw err;
+    }
+  };
+
   // Fetch data function
   const fetchData = useCallback(async (module, setter, initial) => {
     if (!user) return;
 
     try {
-      console.log(`🔄 Fetching data for module: ${module}`);
+      // console.log(`🔄 Fetching data for module: ${module}`);
       const response = await api.get(`/${module}`);
+      // console.log(`📥 Raw response for ${module}:`, response.data);
 
       const data = response.data;
-      let list = Array.isArray(data) ? data : data.data || [];
+      let list = Array.isArray(data) ? data : data.data || data.items || [];
       // Special normalization for tasks: assignedTo and assignedBy may be objects (populated) or strings (ids)
       if (module === 'tasks') {
         list = list.map((task) => {
@@ -1223,6 +1419,30 @@ export const DataProvider = ({ children }) => {
             assignedByName: assignedByName || (assignedBy ? 'Admin' : 'System')
           };
         });
+      }
+      else if (module === 'holidays') {
+        const mappedHolidays = list.map(normalizeId).map(h => ({
+          ...h,
+          name: h.title || h.name,
+          date: h.date,
+          type: h.type || 'holiday',
+          description: h.description
+        }));
+        setHolidays(mappedHolidays);
+        setter(mappedHolidays);
+        return;
+      }
+      else if (module === 'birthdays') {
+        const mappedBirthdays = list.map(normalizeId).map(b => ({
+          ...b,
+          employeeName: b.employeeName || b.title,
+          date: b.date,
+          department: b.department,
+          employeeId: b.user || b.employeeId
+        }));
+        setBirthdays(mappedBirthdays);
+        setter(mappedBirthdays);
+        return;
       }
       console.log(`✅ Fetched ${module}:`, list);
       setter(list.map(normalizeId));
@@ -1326,6 +1546,8 @@ export const DataProvider = ({ children }) => {
       fetchData("tasks", setTasks, initialTasks);
       fetchData("clients", setClients, initialClients);
       fetchData("attendance", setClockRecords, initialClockRecords);
+      fetchData("holidays", setHolidays, initialHolidays);
+      fetchData("birthdays", setBirthdays, initialBirthdays);
       fetchData("leave-types", setLeaveTypes, initialLeaveTypes); // Add this line to fetch leaveTypes for all users
 
       // Only admins/hr can access absences (uses /leaves endpoint)
@@ -1424,6 +1646,12 @@ export const DataProvider = ({ children }) => {
     addAnnouncement,
     updateAnnouncement,
     deleteAnnouncement,
+    addHoliday,
+    updateHoliday,
+    deleteHoliday,
+    addBirthday,
+    updateBirthday,
+    deleteBirthday,
   };
 
   return (

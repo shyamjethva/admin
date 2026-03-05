@@ -8,6 +8,11 @@ const CelebrationSchema = new mongoose.Schema(
             enum: ["birthday", "anniversary", "holiday", "custom"],
             default: "custom",
         },
+        holidayType: {
+            type: String,
+            enum: ["public", "optional"],
+            default: "public"
+        },
 
         date: { type: Date, required: true }, // main celebration date
         description: { type: String, trim: true },

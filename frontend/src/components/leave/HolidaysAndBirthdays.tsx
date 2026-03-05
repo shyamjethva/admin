@@ -6,7 +6,7 @@ import { Modal } from '../Modal';
 
 export function HolidaysAndBirthdays() {
   const { user } = useAuth();
-  const { holidays, addHoliday, updateHoliday, deleteHoliday, birthdays, addBirthday, updateBirthday, deleteBirthday } = useData();
+  const { employees, departments, holidays, addHoliday, updateHoliday, deleteHoliday, birthdays, addBirthday, updateBirthday, deleteBirthday } = useData();
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<Holiday | Birthday | null>(null);
   const [activeTab, setActiveTab] = useState<'holidays' | 'birthdays'>('holidays');
@@ -26,6 +26,16 @@ export function HolidaysAndBirthdays() {
     department: '',
   });
 
+  const formatDDMMYYYY = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   const handleAdd = () => {
     setEditingItem(null);
     setFormData({ name: '', date: '', type: 'public', description: '' });
@@ -43,7 +53,7 @@ export function HolidaysAndBirthdays() {
     setFormData({
       name: holiday.name,
       date: holiday.date,
-      type: holiday.type,
+      type: holiday.type as 'public' | 'optional',
       description: holiday.description,
     });
     setShowModal(true);
@@ -51,11 +61,15 @@ export function HolidaysAndBirthdays() {
 
   const handleEditBirthday = (birthday: Birthday) => {
     setEditingItem(birthday);
+
+    // Find employee to get correct department if missing
+    const emp = employees?.find((e: any) => e.name === birthday.employeeName || e.id === birthday.employeeId);
+
     setBirthdayFormData({
-      employeeName: birthday.employeeName || '',
-      employeeId: birthday.employeeId || '',
+      employeeName: birthday.employeeName || (emp ? emp.name : ''),
+      employeeId: birthday.employeeId || (emp ? emp.id : ''),
       date: birthday.date || '',
-      department: birthday.department || '',
+      department: birthday.department || (emp && emp.department ? emp.department.name || emp.department : ''),
     });
     setShowModal(true);
   };
@@ -99,7 +113,7 @@ export function HolidaysAndBirthdays() {
         thisYearBirthday.setFullYear(today.getFullYear() + 1);
       }
       const daysUntil = Math.ceil((thisYearBirthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return { ...b, daysUntil, displayDate: `${birthDate.getMonth() + 1}/${birthDate.getDate()}` };
+      return { ...b, daysUntil, displayDate: formatDDMMYYYY(b.date) };
     })
     .sort((a, b) => a.daysUntil - b.daysUntil)
     .slice(0, 10);
@@ -193,7 +207,7 @@ export function HolidaysAndBirthdays() {
               <div className="space-y-2 pt-4 border-t border-gray-200">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Date</span>
-                  <span className="text-sm font-medium text-gray-800">{holiday.date}</span>
+                  <span className="text-sm font-medium text-gray-800">{formatDDMMYYYY(holiday.date)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Type</span>
@@ -319,31 +333,43 @@ export function HolidaysAndBirthdays() {
               <>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Employee Name</label>
-                  <input
-                    type="text"
-                    value={birthdayFormData.employeeName}
-                    onChange={(e) => setBirthdayFormData({ ...birthdayFormData, employeeName: e.target.value })}
+                  <select
+                    value={birthdayFormData.employeeId || ''}
+                    onChange={(e) => {
+                      const empId = e.target.value;
+                      const selectedEmp = employees.find((emp: any) => emp.id === empId);
+                      setBirthdayFormData({
+                        ...birthdayFormData,
+                        employeeId: selectedEmp?.id || '',
+                        employeeName: selectedEmp?.name || '',
+                        department: selectedEmp?.department?.name || selectedEmp?.department || birthdayFormData.department || ''
+                      });
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                     required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
-                  <input
-                    type="text"
-                    value={birthdayFormData.employeeId}
-                    onChange={(e) => setBirthdayFormData({ ...birthdayFormData, employeeId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
+                  >
+                    <option value="" disabled>Select an Employee</option>
+                    {employees.map((emp: any) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                  <input
-                    type="text"
+                  <select
                     value={birthdayFormData.department}
                     onChange={(e) => setBirthdayFormData({ ...birthdayFormData, department: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
+                  >
+                    <option value="">Select Department (Optional)</option>
+                    {departments.map((dept: any) => (
+                      <option key={dept.id} value={dept.name}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Birthday Date</label>

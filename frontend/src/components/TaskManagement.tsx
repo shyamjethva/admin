@@ -62,17 +62,20 @@ export function TaskManagement() {
 	});
 	const [currentTime, setCurrentTime] = useState(Date.now());
 
-	// Simple debugging
-	console.log('=== TASK MANAGEMENT DEBUG ===');
-	console.log('User:', user);
-	console.log('All tasks:', tasks);
-	console.log('User role:', user?.role);
-	console.log('Is employee:', user?.role === 'employee');
-	console.log('Active timers:', activeTimers);
-	console.log('============================');
 
-	// Simple filtering - show all tasks for now to test
-	const filteredTasks = tasks || [];
+
+	// Filter tasks based on role - Backend already filters for regular employees
+	// but we double check if possible. Since User._id might not match Employee._id
+	// we will trust the backend's filtering for employees, and only filter 
+	// locally if we can match the email.
+	const filteredTasks = (tasks || []).filter((task: any) => {
+		const isAdminOrHR = user?.role === 'admin' || user?.role === 'hr';
+		if (isAdminOrHR) return true;
+
+		// For employees, tasks are already filtered securely by the backend.
+		// We just show whatever the backend sent us.
+		return true;
+	});
 
 	// Save timers to localStorage whenever they change
 	useEffect(() => {

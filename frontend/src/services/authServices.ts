@@ -15,7 +15,7 @@ export interface LoginResponse {
         name: string;
         email: string;
         role: "admin" | "hr" | "employee";
-        employeeId?: string;
+        userId?: string;
         department?: string;
         designation?: string;
         avatar?: string;
@@ -28,7 +28,7 @@ export interface RegisterData {
     email: string;
     password: string;
     role: "admin" | "hr" | "employee";
-    employeeId?: string;
+    userId?: string;
     department?: string;
     designation?: string;
     phone?: string;

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Bell, Search, User, LogOut, Settings } from 'lucide-react';
+import { Bell, Search, User, LogOut, Settings, Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import { Button } from './ui/button';
@@ -10,17 +10,28 @@ interface HeaderProps {
   onProfileClick: () => void;
   onSettingsClick?: () => void;
   onNavigate?: (page: string) => void;
+  onMenuToggle?: () => void;
 }
 
-export function Header({ onProfileClick, onSettingsClick, onNavigate }: HeaderProps) {
+export function Header({ onProfileClick, onSettingsClick, onNavigate, onMenuToggle }: HeaderProps) {
   const { user, logout } = useAuth();
   const { isClockActive, workingTime, toggleClock } = useData();
   const [showDropdown, setShowDropdown] = useState(false);
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4 relative z-50">
-      <div className="flex items-center justify-between">
-        <div className="flex-1 flex items-center gap-4">
+    <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 relative z-50">
+      <div className="flex items-center justify-between gap-2 md:gap-4">
+        <div className="flex-1 flex items-center gap-2 md:gap-4 min-w-0">
+          {onMenuToggle && (
+            <button
+              onClick={onMenuToggle}
+              className="hide-on-desktop p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg shrink-0 transition-colors flex items-center justify-center min-h-[44px] min-w-[44px]"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+              aria-label="Toggle menu"
+            >
+              <Menu size={24} />
+            </button>
+          )}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input

@@ -21,34 +21,38 @@ export const getTasks = async (req, res) => {
                 role: currentUser.role
             }, null, 2));
 
-            if (currentUser && currentUser.email) {
-                // Find employee by email
-                console.log(`📧 Attempting email-based matching with: ${currentUser.email}`);
-                const EmployeeModel = (await import('../models/Employee.js')).default;
-                const employee = await EmployeeModel.findOne({ email: currentUser.email });
+            const mongoose = await import('mongoose');
+            // Always include the current User's ObjectId (since frontend might assign using this)
+            const possibleEmpIds = [currentUser._id, currentUser._id.toString()];
 
-                console.log(`📧 Email match result:`, employee ? `Found employee: ${employee.name} (ID: ${employee._id})` : 'NOT FOUND');
+            if (currentUser) {
+                // Find employee by email, userId, or name
+                console.log(`📧 Attempting robust matching for user: ${currentUser.name}`);
+                const EmployeeModel = (await import('../models/Employee.js')).default;
+
+                const queryConditions = [];
+                if (currentUser.email) queryConditions.push({ email: currentUser.email });
+                if (currentUser.userId) queryConditions.push({ code: currentUser.userId });
+                if (currentUser.name) queryConditions.push({ name: new RegExp('^' + currentUser.name + '$', 'i') });
+
+                let employee = null;
+                if (queryConditions.length > 0) {
+                    employee = await EmployeeModel.findOne({ $or: queryConditions });
+                }
+
+                console.log(`📧 Match result:`, employee ? `Found employee: ${employee.name} (ID: ${employee._id})` : 'NOT FOUND');
 
                 if (employee) {
-                    // Match tasks assigned to this employee's ObjectId
-                    const mongoose = await import('mongoose');
-                    const possibleEmpIds = [employee._id];
-
-                    // Also add string version for flexibility
+                    // Match tasks assigned to this employee's ObjectId as well
+                    possibleEmpIds.push(employee._id);
                     possibleEmpIds.push(employee._id.toString());
-
-                    query.assignedTo = { $in: possibleEmpIds };
-                    console.log(`📋 Query using employee ID:`, possibleEmpIds);
-                } else {
-                    // If no matching employee found, return empty result
-                    console.log('❌ No matching employee found, returning empty task list');
-                    return res.json({ success: true, data: [] });
                 }
             } else {
-                // If no email found, return empty result
-                console.log('❌ No email found for user, returning empty task list');
-                return res.json({ success: true, data: [] });
+                console.log('⚠️ No email found for user, falling back to User ID only');
             }
+
+            query.assignedTo = { $in: possibleEmpIds };
+            console.log(`📋 Query using possible IDs:`, possibleEmpIds);
         } else {
             console.log('🏢 Admin/HR user, returning all tasks');
         }

@@ -284,7 +284,7 @@ export function Celebrations() {
                         <PartyPopper className="text-white" size={24} />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-800">{holiday.name}</h3>
+                        <h3 className="font-semibold text-gray-800">{holiday.title || holiday.name}</h3>
                         <p className="text-sm text-gray-600">{holiday.description}</p>
                         <p className="text-xs text-gray-500 mt-1">{formatDate(holiday.date)}</p>
                       </div>

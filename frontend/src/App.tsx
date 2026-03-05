@@ -39,6 +39,7 @@ import { NotificationProvider } from './context/NotificationContext';
 
 function AppContent() {
   const [activePage, setActivePage] = useState('dashboard');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { user } = useAuth();
 
   if (!user) {
@@ -92,7 +93,6 @@ function AppContent() {
       case 'announcements':
         return <Announcements />;
       case 'holidays-birthdays':
-        return <HolidaysAndBirthdays />;
       case 'holidays':
         return <Holidays />;
       case 'birthdays':
@@ -117,15 +117,90 @@ function AppContent() {
   return (
     <DataProvider>
       <NotificationProvider>
-        <div className="flex h-screen bg-gray-50">
-          <Sidebar activePage={activePage} setActivePage={setActivePage} />
-          <div className="flex-1 flex flex-col overflow-hidden">
+        <style dangerouslySetInnerHTML={{
+          __html: `
+          .app-sidebar {
+            width: 256px !important;
+            background-color: #111827 !important;
+            color: white !important;
+            height: 100vh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            border-right: 1px solid #374151 !important;
+            flex-shrink: 0 !important;
+            transition: transform 0.3s ease-in-out !important;
+            z-index: 50 !important;
+          }
+          .hide-on-desktop {}
+          .show-on-desktop { display: none !important; }
+          .mobile-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 40;
+          }
+          .custom-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+          .custom-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+          .custom-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+
+          @media (max-width: 1024px) {
+            .custom-grid-4 { grid-template-columns: repeat(2, 1fr); }
+          }
+
+          @media (max-width: 767px) {
+            .app-sidebar {
+              position: fixed !important;
+              top: 0 !important;
+              left: 0 !important;
+              transform: translateX(-100%) !important;
+            }
+            .app-sidebar.open {
+              transform: translateX(0) !important;
+              box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+            }
+            .custom-grid-4, .custom-grid-3, .custom-grid-2 {
+              grid-template-columns: repeat(1, 1fr) !important;
+              gap: 1rem !important;
+            }
+          }
+
+          @media (min-width: 768px) {
+            .app-sidebar {
+              position: relative !important;
+              transform: translateX(0) !important;
+            }
+            .hide-on-desktop { display: none !important; }
+            .show-on-desktop { display: block !important; }
+            .mobile-overlay { display: none !important; }
+          }
+        `}} />
+        <div className="flex h-screen bg-gray-50 overflow-hidden relative">
+          {/* Mobile Sidebar Overlay */}
+          {isMobileSidebarOpen && (
+            <div
+              className="mobile-overlay"
+              onClick={() => setIsMobileSidebarOpen(false)}
+              aria-hidden="true"
+            />
+          )}
+
+          <Sidebar
+            activePage={activePage}
+            setActivePage={(page) => {
+              setActivePage(page);
+              setIsMobileSidebarOpen(false); // Close sidebar automatically on mobile when navigating
+            }}
+            isOpen={isMobileSidebarOpen}
+            setIsOpen={setIsMobileSidebarOpen}
+          />
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
             <Header
               onProfileClick={() => setActivePage('profile')}
               onSettingsClick={() => setActivePage('settings')}
               onNavigate={(page) => setActivePage(page)}
+              onMenuToggle={() => setIsMobileSidebarOpen(true)}
             />
-            <main className="flex-1 overflow-y-auto p-6">
+            <main className="flex-1 overflow-y-auto px-4 py-6 md:p-6">
               {renderPage()}
             </main>
           </div>

@@ -1,4 +1,4 @@
-import { Users, Calendar, FileText, Briefcase, DollarSign, Megaphone, BarChart3, HelpCircle, ChevronDown, LogOut, MessageCircle, Clock, UserCheck, CheckSquare, PartyPopper, ChevronRight, Users2, Building2, HandCoins, ReceiptText, BadgeCheck, CalendarCheck, PiggyBank, GraduationCap, ClipboardList, FileBarChart } from 'lucide-react';
+import { Users, Calendar, FileText, Briefcase, DollarSign, Megaphone, BarChart3, HelpCircle, ChevronDown, LogOut, MessageCircle, Clock, UserCheck, CheckSquare, PartyPopper, ChevronRight, Users2, Building2, HandCoins, ReceiptText, BadgeCheck, CalendarCheck, PiggyBank, GraduationCap, ClipboardList, FileBarChart, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -6,11 +6,13 @@ import { useNotifications } from '../context/NotificationContext';
 interface SidebarProps {
   activePage: string;
   setActivePage: (page: string) => void;
+  isOpen?: boolean;
+  setIsOpen?: (isOpen: boolean) => void;
 }
 
-export function Sidebar({ activePage, setActivePage }: SidebarProps) {
+export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }: SidebarProps) {
   const { user, logout } = useAuth();
-  const { unreadCount } = useNotifications();
+  const { unreadCount, unreadCountsByType } = useNotifications();
 
   // State to manage expanded/collapsed submenus
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
@@ -117,35 +119,53 @@ export function Sidebar({ activePage, setActivePage }: SidebarProps) {
   });
 
   return (
-    <div style={{
-      width: '256px',
-      backgroundColor: '#111827', // gray-900
-      color: 'white',
-      height: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      borderRight: '1px solid #374151' // gray-700
-    }}>
+    <div className={`app-sidebar ${isOpen ? 'open' : ''}`}>
       {/* Header */}
       <div style={{
         padding: '24px 24px 16px',
         borderBottom: '1px solid #374151',
         backgroundColor: '#2563eb' // blue-600
       }}>
-        <h1 style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
-          color: 'white',
-          marginBottom: '4px'
-        }}>
-          Error Infotech
-        </h1>
-        <p style={{
-          fontSize: '14px',
-          color: 'rgba(255,255,255,0.8)'
-        }}>
-          Admin Panel
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h1 style={{
+              fontSize: '20px',
+              fontWeight: 'bold',
+              color: 'white',
+              marginBottom: '4px'
+            }}>
+              Error Infotech
+            </h1>
+            <p style={{
+              fontSize: '14px',
+              color: 'rgba(255,255,255,0.8)'
+            }}>
+              Admin Panel
+            </p>
+          </div>
+          {setIsOpen && (
+            <button
+              onClick={() => setIsOpen(false)}
+              className="hide-on-desktop"
+              style={{
+                padding: '6px',
+                marginTop: '-4px',
+                marginRight: '-4px',
+                color: 'white',
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              aria-label="Close sidebar"
+            >
+              <X size={20} />
+            </button>
+          )}
+        </div>
         {user && (
           <div style={{
             marginTop: '16px',
@@ -237,7 +257,7 @@ export function Sidebar({ activePage, setActivePage }: SidebarProps) {
                       }}
                     />
                   )}
-                  {item.id === 'group-chat' && unreadCount > 0 && (
+                  {item.id === 'group-chat' && unreadCountsByType?.message > 0 && (
                     <span style={{
                       marginLeft: 'auto',
                       backgroundColor: '#ef4444', // red-500
@@ -251,7 +271,24 @@ export function Sidebar({ activePage, setActivePage }: SidebarProps) {
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}>
-                      {unreadCount}
+                      {unreadCountsByType.message}
+                    </span>
+                  )}
+                  {item.id === 'announcements' && unreadCountsByType?.announcement > 0 && (
+                    <span style={{
+                      marginLeft: 'auto',
+                      backgroundColor: '#ef4444', // red-500
+                      color: 'white',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {unreadCountsByType.announcement}
                     </span>
                   )}
                 </div>
@@ -335,6 +372,6 @@ export function Sidebar({ activePage, setActivePage }: SidebarProps) {
           </span>
         </button>
       </div>
-    </div>
+    </div >
   );
 }

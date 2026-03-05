@@ -33,6 +33,14 @@ export interface Notification {
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
+  unreadCountsByType?: {
+    total: number;
+    message: number;
+    announcement: number;
+    task: number;
+    leave: number;
+    other: number;
+  };
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
@@ -60,10 +68,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [lastCheckedTime, setLastCheckedTime] = useState(new Date().toISOString());
 
-  // Debug logs
-  console.log('NotificationContext - User:', user?.name, 'Role:', user?.role);
-  console.log('NotificationContext - Current notifications:', notifications);
-  console.log('NotificationContext - Unread count:', notifications.filter(n => !n.read && !n.dismissed).length);
+
 
   // Initialize socket connection for real-time notifications
   useEffect(() => {
@@ -153,7 +158,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       const handleChatNotification = (data: any) => {
         console.log('🔔 NotificationContext received chat_notification event:', data);
         console.log('🔔 User ID:', user?.id);
+        console.log('🔔 User role:', user?.role);
         console.log('🔔 Data sender ID:', data.senderId);
+        console.log('🔔 Data sender role:', data.senderRole);
 
         // Handle 'chat_notification' events for chat messages
         // Check if this is a chat message notification
@@ -219,6 +226,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       loadPendingChatNotifications();
     }
   }, [user?.id, user?.role]); // Added user.role to dependencies to ensure it runs when role changes too
+
+  // Also load chat notifications periodically to catch any missed notifications
+  useEffect(() => {
+    if (user?.id) {
+      const interval = setInterval(() => {
+        console.log('Periodically loading pending chat notifications...');
+        loadPendingChatNotifications();
+      }, 30000); // Every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [user?.id]);
 
   // Load pending chat notifications from backend
   const loadPendingChatNotifications = async () => {
@@ -292,6 +311,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (user?.id) {
       console.log('Saving notifications to localStorage:', notifications);
       localStorage.setItem(`notifications_${user.id}`, JSON.stringify(notifications));
+
+      // Also update unread counts when notifications change
+      const activeNotifications = notifications.filter(n => !n.dismissed);
+      const unreadCount = activeNotifications.filter(n => !n.read).length;
+      const unreadCountsByType = {
+        total: unreadCount,
+        message: activeNotifications.filter(n => n.type === 'message' && !n.read).length,
+        announcement: activeNotifications.filter(n => n.type === 'announcement' && !n.read).length,
+        task: activeNotifications.filter(n => n.type === 'task' && !n.read).length,
+        leave: activeNotifications.filter(n => n.type === 'leave' && !n.read).length,
+        other: activeNotifications.filter(n => !['message', 'announcement', 'task', 'leave'].includes(n.type) && !n.read).length,
+      };
+
+      console.log('Updated unread counts by type:', unreadCountsByType);
     }
   }, [notifications, user?.id]);
 
@@ -303,12 +336,22 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         const keyRelated = notification.relatedId || '';
         const keyTitle = notification.title;
 
+        console.log('🔔 Checking for duplicate notification:', {
+          newType: keyType,
+          newRelated: keyRelated,
+          newTitle: keyTitle,
+          existingCount: prev.length,
+          existingNotifications: prev.slice(0, 5) // Show first 5 for debugging
+        });
+
         const exists = prev.some(
           (n) =>
             n.type === keyType &&
             (n.relatedId || '') === keyRelated &&
             n.title === keyTitle
         );
+
+        console.log('🔔 Duplicate exists?', exists);
 
         if (exists) {
           console.log('🔔 Notification already exists, skipping:', notification);
@@ -323,6 +366,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         };
 
         console.log('🔔 Adding new notification:', newNotification);
+        console.log('🔔 Notification type:', notification.type);
 
         //✅ toast only when actually added
         const toastMessage = `${notification.title}: ${notification.message}`;
@@ -652,14 +696,29 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const activeNotifications = notifications.filter(n => !n.dismissed);
   const unreadCount = activeNotifications.filter(n => !n.read).length;
 
-  console.log('🔔 Final unread count:', unreadCount);
-  console.log('🔔 Active notifications:', activeNotifications);
+  // Calculate unread counts by type
+  const unreadCountsByType = {
+    total: unreadCount,
+    message: activeNotifications.filter(n => n.type === 'message' && !n.read).length,
+    announcement: activeNotifications.filter(n => n.type === 'announcement' && !n.read).length,
+    task: activeNotifications.filter(n => n.type === 'task' && !n.read).length,
+    leave: activeNotifications.filter(n => n.type === 'leave' && !n.read).length,
+    other: activeNotifications.filter(n => !['message', 'announcement', 'task', 'leave'].includes(n.type) && !n.read).length,
+  };
+
+  console.log('🔔 Notification breakdown by type:', {
+    message: activeNotifications.filter(n => n.type === 'message' && !n.read),
+    announcement: activeNotifications.filter(n => n.type === 'announcement' && !n.read),
+    task: activeNotifications.filter(n => n.type === 'task' && !n.read),
+    leave: activeNotifications.filter(n => n.type === 'leave' && !n.read)
+  });
 
   return (
     <NotificationContext.Provider
       value={{
         notifications: activeNotifications,
         unreadCount,
+        unreadCountsByType,
         addNotification,
         markAsRead,
         markAllAsRead,

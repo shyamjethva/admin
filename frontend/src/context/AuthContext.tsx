@@ -256,117 +256,150 @@ function LoginScreen({
   // ];
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Left Side - Background Image Only */}
-      <div className="w-full h-screen">
+    <>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        .login-layout {
+          display: flex;
+          flex-direction: column;
+          min-height: 100vh;
+          background-color: black;
+        }
+        .login-img-section {
+          display: none;
+        }
+        .login-form-section {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 1.5rem;
+        }
+        @media (min-width: 768px) {
+          .login-layout {
+            flex-direction: row;
+          }
+          .login-img-section {
+            display: block;
+            width: 55vw;
+            height: 100vh;
+            position: relative;
+            flex-shrink: 0;
+          }
+          .login-form-section {
+            flex: 1;
+            padding: 3rem;
+          }
+        }
+      `}} />
+      <div className="login-layout">
+        {/* Left Side - Background Image Only */}
+        <div className="login-img-section">
+          <div
+            className="absolute inset-0 bg-cover bg-no-repeat"
+            style={{
+              backgroundImage: `url(${loginImage})`,
+              backgroundPosition: "55% center",
+            }}
+          />
+          <img
+            src={logo}
+            alt="Company Logo"
+            className="absolute top-8 left-8 z-10"
+            style={{
+              height: "6vh",
+              width: "auto",
+              marginTop: "10px"
+            }}
+          />
+        </div>
 
-        <div
-          className="w-32 h-full bg-cover bg-no-repeat "
-          style={{
-            backgroundImage: `url(${loginImage})`,
-            backgroundPosition: "55% center",
-            width: "52vw"
-          }}
-        />
-        <img
-          src={logo}
-          alt="Company Logo"
-          className="absolute top-6 left-6 z-10"
-          style={{
-            height: "6vh",
-            width: "19vh",
-            marginTop: "-51vw",
-            marginLeft: "2vh"
-          }}
-        />
-
-      </div>
-
-      {/* Right Side - Login Form */}
-      <div className="w-full md:w-1/5 flex items-center justify-center p-6 md:p-12 bg-black">
-        <div className="w-full max-w-md">
-          {/* Login Card */}
-          <div className="bg-black p-7 md:p-10">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl md:text-3xl p-7 font-bold text-white mb-2 text-left">
-                Admin Panel
-              </h1>
-              <p className="text-white text-left">
-                please enter your credentials to access the admin panel
-              </p> <br /><br />
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-md font-medium text-white mb-2"
-                >
-                  Email Address
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter your email"
-                  required
-                />
+        {/* Right Side - Login Form */}
+        <div className="login-form-section">
+          <div className="w-full max-w-md">
+            {/* Login Card */}
+            <div className="bg-black p-7 md:p-10">
+              <div className="text-center mb-8">
+                <h1 className="text-3xl md:text-3xl p-7 font-bold text-white mb-2 text-left">
+                  Admin Panel
+                </h1>
+                <p className="text-white text-left">
+                  please enter your credentials to access the admin panel
+                </p> <br /><br />
               </div>
 
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-ms font-medium text-white mb-2"
-                >
-                  Password
-                </label>
-                <div className="relative">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-md font-medium text-white mb-2"
+                  >
+                    Email Address or User ID
+                  </label>
                   <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-12"
-                    placeholder="Enter your password"
+                    id="email"
+                    type="text"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-transparent"
+                    placeholder="Enter your email or User ID"
                     required
                   />
+                </div>
 
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="block text-ms font-medium text-white mb-2"
                   >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-              </div>
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-12"
+                      placeholder="Enter your password"
+                      required
+                    />
 
-              {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-100">
-                  {error}
-                </div>
-              )}
-              <br />
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 font-medium text-lg shadow-md hover:shadow-lg"
-              >
-                {loading ? "Signing in..." : "Sign in to your account"}
-              </button>
-              <br />
-              <div className="text-white">
-                2026 error infotech. All rights reserved.
-              </div>
-            </form>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-100">
+                    {error}
+                  </div>
+                )}
+                <br />
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 font-medium text-lg shadow-md hover:shadow-lg"
+                >
+                  {loading ? "Signing in..." : "Sign in to your account"}
+                </button>
+                <br />
+                <div className="text-white">
+                  2026 error infotech. All rights reserved.
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -379,4 +412,5 @@ export function useAuth() {
   }
   return context;
 }
+
 

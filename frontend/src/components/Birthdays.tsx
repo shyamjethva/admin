@@ -8,7 +8,6 @@ import api from '../services/api';
 export function Birthdays() {
     const { user } = useAuth();
     const { birthdays, employees, departments } = useData();
-    console.log('Birthdays component - departments:', departments);
     const [showModal, setShowModal] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [localBirthdays, setLocalBirthdays] = useState([]);
@@ -35,7 +34,7 @@ export function Birthdays() {
 
     const displayBirthdays = Array.isArray(localBirthdays) && localBirthdays.length > 0 ? localBirthdays : birthdays;
     const [formData, setFormData] = useState({
-        employeeId: '',
+        employeeName: '',
         department: '',
         date: '',
     });
@@ -74,7 +73,7 @@ export function Birthdays() {
 
     const handleAdd = () => {
         setFormData({
-            employeeId: '',
+            employeeName: '',
             department: '',
             date: '',
         });
@@ -85,18 +84,17 @@ export function Birthdays() {
         e.preventDefault();
 
         try {
-            // Get employee name from selected employeeId
-            const selectedEmployee = employees.find(emp => emp.id === formData.employeeId || emp._id === formData.employeeId);
-            const employeeName = selectedEmployee ? selectedEmployee.name : '';
+            // Get employee details from selected employee name
+            const selectedEmployee = employees.find(emp => emp.name === formData.employeeName);
+            const employeeDepartment = selectedEmployee ? selectedEmployee.department : formData.department;
 
             const payload = {
-                title: `Birthday - ${employeeName}`,
+                title: `Birthday - ${formData.employeeName}`,
                 date: formData.date,
                 type: 'birthday',
-                description: `${employeeName}'s birthday`,
-                employeeName: employeeName,
-                employeeId: formData.employeeId,
-                department: formData.department,
+                description: `${formData.employeeName}'s birthday`,
+                employeeName: formData.employeeName,
+                department: employeeDepartment,
             };
 
             console.log('Submitting birthday:', payload);
@@ -115,7 +113,7 @@ export function Birthdays() {
             if (result && result.data?.success) {
                 setShowModal(false);
                 setEditingBirthday(null);
-                setFormData({ employeeId: '', department: '', date: '' });
+                setFormData({ employeeName: '', department: '', date: '' });
                 setRefreshKey(prev => prev + 1);
                 alert(editingBirthday ? 'Birthday updated successfully!' : 'Birthday added successfully!');
             } else {
@@ -147,7 +145,7 @@ export function Birthdays() {
     const handleEdit = (birthday: any) => {
         setEditingBirthday(birthday);
         setFormData({
-            employeeId: birthday.employeeId || '',
+            employeeName: birthday.employeeName || '',
             department: birthday.department || '',
             date: birthday.date.split('T')[0], // Format date for input
         });
@@ -250,7 +248,7 @@ export function Birthdays() {
                     onClose={() => {
                         setShowModal(false);
                         setEditingBirthday(null);
-                        setFormData({ employeeId: '', department: '', date: '' });
+                        setFormData({ employeeName: '', department: '', date: '' });
                     }}
                     title={editingBirthday ? "Edit Birthday" : "Add New Birthday"}
                 >
@@ -260,20 +258,20 @@ export function Birthdays() {
                                 Employee
                             </label>
                             <select
-                                value={formData.employeeId}
+                                value={formData.employeeName}
                                 onChange={(e) => {
-                                    const selectedEmpId = e.target.value;
-                                    setFormData({ ...formData, employeeId: selectedEmpId });
+                                    const selectedEmpName = e.target.value;
+                                    setFormData({ ...formData, employeeName: selectedEmpName });
 
                                     // Auto-fill department when employee is selected
-                                    if (selectedEmpId) {
+                                    if (selectedEmpName) {
                                         const selectedEmployee = employees.find(emp =>
-                                            emp.id === selectedEmpId || emp._id === selectedEmpId
+                                            emp.name === selectedEmpName
                                         );
                                         if (selectedEmployee && selectedEmployee.department) {
                                             setFormData(prev => ({
                                                 ...prev,
-                                                employeeId: selectedEmpId,
+                                                employeeName: selectedEmpName,
                                                 department: selectedEmployee.department
                                             }));
                                         }
@@ -284,7 +282,7 @@ export function Birthdays() {
                             >
                                 <option value="">Select Employee</option>
                                 {employees.map((emp: any) => (
-                                    <option key={emp.id || emp._id} value={emp.id || emp._id}>
+                                    <option key={emp.id || emp._id} value={emp.name}>
                                         {emp.name}
                                     </option>
                                 ))}

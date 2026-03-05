@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "hr", "employee"],
       default: "employee",
     },
-    employeeId: { type: String, default: null },
+    userId: { type: String, default: null },
 
     // optional profile fields (used in UI)
     phone: { type: String, default: "" },
