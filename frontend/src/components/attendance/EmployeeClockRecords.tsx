@@ -111,6 +111,20 @@ export function EmployeeClockRecords() {
         return typeof time === 'string' ? time : String(time);
     };
 
+    // Format date display to DD/MM/YYYY
+    const formatDisplayDate = (dateStr?: string) => {
+        if (!dateStr) return 'N/A';
+        try {
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                return `${day}/${month}/${date.getFullYear()}`;
+            }
+        } catch (e) { }
+        return dateStr;
+    };
+
     // Calculate working hours
     const calculateHours = (record: any) => {
         // Check if record.checkIn exists and is a string
@@ -302,9 +316,9 @@ export function EmployeeClockRecords() {
                                         <td className="px-6 py-5 whitespace-nowrap">
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-bold text-gray-800">
-                                                    {record.date ? new Date(record.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                                                    {formatDisplayDate(record.date)}
                                                 </span>
-                                                <span className="text-[10px] font-medium text-gray-400 uppercase">{new Date(record.date).toLocaleDateString('en-GB', { weekday: 'long' })}</span>
+                                                <span className="text-[10px] font-medium text-gray-400 uppercase">{new Date(record.date).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'Asia/Kolkata' })}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 whitespace-nowrap">

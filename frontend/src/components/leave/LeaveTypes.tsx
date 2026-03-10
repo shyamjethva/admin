@@ -154,10 +154,8 @@ export function LeaveTypes() {
                 required
               >
                 <option value="">Select Leave Type</option>
-                <option value="CL">CL - Casual Leave Type</option>
-                <option value="PL">PL - Paid Leave Type</option>
+                <option value="CL/PL">CL - Casual / Paid Leave Type</option>
                 <option value="SL">SL - Sick Leave Type</option>
-                <option value="LOP">LOP - Loss of Pay</option>
               </select>
             </div>
             <div>

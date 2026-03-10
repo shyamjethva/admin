@@ -64,7 +64,7 @@ export function HelpSupport() {
   ];
 
   const contactInfo = [
-    { icon: <Mail size={20} />, label: 'Email', value: 'errorinfotech404@gmail.com', color: 'text-blue-600' },
+    { icon: <Mail size={20} />, label: 'Email', value: 'errorinfotech404@gmail.com | Admin   hr.404.errorinfotech@gmail.com | Hr', color: 'text-blue-600' },
     { icon: <Phone size={20} />, label: 'Phone', value: '+91 81287 04400', color: 'text-green-600' },
     { icon: <MessageCircle size={20} />, label: 'Live Chat', value: 'Available 24/7', color: 'text-purple-600' },
   ];

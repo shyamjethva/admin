@@ -68,8 +68,7 @@ class ChatNotificationController {
 
             // Get users with specified roles
             const recipients = await User.find({
-                role: { $in: recipientRoles },
-                isActive: true
+                role: { $in: recipientRoles }
             });
 
             return recipients;

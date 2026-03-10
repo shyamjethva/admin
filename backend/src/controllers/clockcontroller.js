@@ -1,16 +1,32 @@
 import Attendance from "../models/Attendance.js";
 import mongoose from "mongoose";
 
+const getISTInfo = () => {
+    const realNow = new Date();
+    // IST is UTC + 5:30
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istTimestamp = new Date(realNow.getTime() + istOffset);
+
+    // Format: YYYY-MM-DD (based on IST)
+    const date = istTimestamp.toISOString().split('T')[0];
+
+    // Format: HH:MM:SS (based on IST)
+    const time = istTimestamp.toISOString().split('T')[1].split('.')[0];
+
+    // This Date object is manually offset to "look" like IST in MongoDB
+    // Note: Frontend timers will need to account for this 5.5h offset
+    const istDateObject = istTimestamp;
+
+    return { date, time, istDateObject };
+};
+
 // Clock In - Create or update attendance record
 export const clockIn = async (req, res) => {
     console.log('🔵 CLOCK IN ENDPOINT HIT');
-    console.log('🔵 Request headers:', req.headers);
     console.log('🔵 Request body:', req.body);
-    console.log('🔵 User from auth:', req.user);
 
     try {
         const { employeeId, employeeName } = req.body;
-        console.log('🔵 CLOCK IN REQUEST:', { employeeId, employeeName });
 
         // Validate required fields
         if (!employeeId) {
@@ -20,17 +36,10 @@ export const clockIn = async (req, res) => {
             });
         }
 
-        // Use the server's local date to ensure consistency
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const { date: today, time: clockInTime, istDateObject: clockInTimestamp } = getISTInfo();
 
-        // Capture the EXACT time when the request is processed
-        const currentTime = new Date();
-        const clockInTime = currentTime.toTimeString().split(' ')[0]; // HH:MM:SS format
-        const clockInTimestamp = currentTime; // Full timestamp
-
-        console.log('⏰ Clock in time being recorded:', clockInTime);
-        console.log('⏰ Clock in timestamp being recorded:', clockInTimestamp);
+        console.log('⏰ Clock in time recorded (IST):', clockInTime);
+        console.log('⏰ Today date (IST):', today);
 
         // Check if attendance record already exists for today
         let query = { date: today };
@@ -119,17 +128,9 @@ export const clockIn = async (req, res) => {
 export const clockOut = async (req, res) => {
     try {
         const { employeeId } = req.body;
-        // Use the server's local date to ensure consistency
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const { date: today, time: clockOutTime, istDateObject: clockOutTimestamp } = getISTInfo();
 
-        // Capture the EXACT time when the request is processed
-        const currentTime = new Date();
-        const clockOutTime = currentTime.toTimeString().split(' ')[0]; // HH:MM:SS format
-        const clockOutTimestamp = currentTime; // Full timestamp
-
-        console.log('⏰ Clock out time being recorded:', clockOutTime);
-        console.log('⏰ Clock out timestamp being recorded:', clockOutTimestamp);
+        console.log('⏰ Clock out time recorded (IST):', clockOutTime);
 
         // Find today's attendance record
         let query = { date: today };
@@ -168,7 +169,8 @@ export const clockOut = async (req, res) => {
 
         // Validation: Minimum 1 minute rule
         if (attendance.lastClockInAt) {
-            const timeDiff = (currentTime.getTime() - attendance.lastClockInAt.getTime()) / 1000;
+            const { istDateObject: now } = getISTInfo();
+            const timeDiff = (now.getTime() - attendance.lastClockInAt.getTime()) / 1000;
             if (timeDiff < 60) {
                 return res.status(400).json({
                     success: false,
@@ -228,9 +230,7 @@ export const clockOut = async (req, res) => {
 export const breakIn = async (req, res) => {
     try {
         const { employeeId } = req.body;
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const currentTime = new Date();
+        const { date: today, time: currentTimeStr, istDateObject: now } = getISTInfo();
 
         // Find today's attendance record
         let query = { date: today };
@@ -275,7 +275,7 @@ export const breakIn = async (req, res) => {
 
         // Add break record
         attendance.breaks.push({
-            breakInAt: currentTime,
+            breakInAt: now,
             breakOutAt: null,
             durationSeconds: 0
         });
@@ -283,7 +283,7 @@ export const breakIn = async (req, res) => {
         // Update status and convenience fields
         attendance.status = "on_break";
         attendance.currentBreakOpen = true;
-        attendance.breakIn = currentTime.toTimeString().split(' ')[0];
+        attendance.breakIn = currentTimeStr;
         attendance.breakOut = null; // Reset breakout when new break starts
 
         const updated = await attendance.save();
@@ -309,9 +309,7 @@ export const breakIn = async (req, res) => {
 export const breakOut = async (req, res) => {
     try {
         const { employeeId } = req.body;
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const currentTime = new Date();
+        const { date: today, time: currentTimeStr, istDateObject: now } = getISTInfo();
 
         // Find today's attendance record
         let query = { date: today };
@@ -349,7 +347,7 @@ export const breakOut = async (req, res) => {
         // Validation: Minimum 1 minute rule for break
         const latestBreak = attendance.breaks[attendance.breaks.length - 1];
         if (latestBreak && latestBreak.breakInAt) {
-            const timeDiff = (currentTime.getTime() - latestBreak.breakInAt.getTime()) / 1000;
+            const timeDiff = (now.getTime() - latestBreak.breakInAt.getTime()) / 1000;
             if (timeDiff < 60) {
                 return res.status(400).json({
                     success: false,
@@ -361,8 +359,8 @@ export const breakOut = async (req, res) => {
         // Close current break
         const currentBreak = attendance.breaks[attendance.breaks.length - 1];
         if (currentBreak && !currentBreak.breakOutAt) {
-            currentBreak.breakOutAt = currentTime;
-            const duration = (currentTime.getTime() - currentBreak.breakInAt.getTime()) / 1000;
+            currentBreak.breakOutAt = now;
+            const duration = (now.getTime() - currentBreak.breakInAt.getTime()) / 1000;
             currentBreak.durationSeconds = Math.max(0, duration);
 
             // Update totals
@@ -375,7 +373,7 @@ export const breakOut = async (req, res) => {
         // Update status and convenience fields
         attendance.status = "clocked_in";
         attendance.currentBreakOpen = false;
-        attendance.breakOut = currentTime.toTimeString().split(' ')[0];
+        attendance.breakOut = currentTimeStr;
         attendance.breakDuration = Math.round(attendance.totals.totalBreakSeconds / 60);
         attendance.hours = attendance.totals.workSeconds / 3600;
 
@@ -402,12 +400,10 @@ export const breakOut = async (req, res) => {
 export const getTodayAttendance = async (req, res) => {
     try {
         const { employeeId } = req.params;
-        // Use the server's local date to match the date when attendance was recorded
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const { date: today } = getISTInfo();
 
         console.log('🔍 getTodayAttendance called for employeeId:', employeeId);
-        console.log('📅 Today is:', today, '(Server local time)');
+        console.log('📅 Today is:', today, '(IST)');
         console.log('📅 UTC date would be:', new Date().toISOString().split('T')[0], 'for comparison');
 
         let query = { date: today };

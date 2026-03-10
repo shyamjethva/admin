@@ -89,7 +89,7 @@ export const createChatMessage = async (req, res) => {
                 console.log(`📬 Message from ${userName} (${userRole}): Found ${recipients.length} recipients:`, recipients.map(r => `${r.name} (${r.role})`));
 
                 // Debug: Show all currently connected users
-                const allConnectedUsers = Object.values(io.sockets.sockets).map(socket => ({
+                const allConnectedUsers = Array.from(io.sockets.sockets.values()).map(socket => ({
                     id: socket.id,
                     userId: socket.userId,
                     userName: socket.userName,
@@ -100,8 +100,8 @@ export const createChatMessage = async (req, res) => {
                 // Emit 'chat_notification' for popup notifications to specific recipients
                 recipients.forEach(recipient => {
                     // Check if recipient is connected
-                    const connectedSockets = Object.values(io.sockets.sockets).filter(socket =>
-                        socket.userId === recipient._id.toString()
+                    const connectedSockets = Array.from(io.sockets.sockets.values()).filter(socket =>
+                        String(socket.userId) === String(recipient._id)
                     );
 
                     console.log(`🔌 Found ${connectedSockets.length} connected sockets for recipient ${recipient.name} (${recipient._id})`);

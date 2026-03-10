@@ -34,11 +34,13 @@ export function Dashboard() {
     let interval: any;
 
     const calculateElapsedTime = () => {
-      const now = new Date();
+      // Offset local time to match the IST-offset Date objects stored in the DB
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const now = new Date(new Date().getTime() + istOffset);
 
       if (status === 'clocked_in' && lastCheckInTime) {
         // Calculate working time: (now - lastCheckInTime) - break time
-        const totalElapsed = (now.getTime() - lastCheckInTime.getTime()) / 1000;
+        const totalElapsed = Math.max(0, (now.getTime() - lastCheckInTime.getTime()) / 1000);
         // We'll need to subtract break time from backend eventually
         const hours = Math.floor(totalElapsed / 3600);
         const minutes = Math.floor((totalElapsed % 3600) / 60);
@@ -46,7 +48,7 @@ export function Dashboard() {
         setWorkingTime({ hours, minutes, seconds });
       } else if (status === 'on_break' && lastBreakInTime) {
         // Calculate break time: (now - lastBreakInTime)
-        const breakElapsed = (now.getTime() - lastBreakInTime.getTime()) / 1000;
+        const breakElapsed = Math.max(0, (now.getTime() - lastBreakInTime.getTime()) / 1000);
         const hours = Math.floor(breakElapsed / 3600);
         const minutes = Math.floor((breakElapsed % 3600) / 60);
         const seconds = Math.floor(breakElapsed % 60);
@@ -220,20 +222,54 @@ export function Dashboard() {
   const canBreakOut = status === 'on_break';
   const canClockIn = status === 'clocked_out';
 
-  // Check if break out is allowed (minimum 1 minute rule)
-  const [canBreakOutEarly, setCanBreakOutEarly] = useState(true);
+  // Delay rules (1 minute)
+  const [canClockOutDelay, setCanClockOutDelay] = useState(true);
+  const [canBreakInDelay, setCanBreakInDelay] = useState(true);
+  const [canBreakOutDelay, setCanBreakOutDelay] = useState(true);
+
+  const [clockOutWait, setClockOutWait] = useState(0);
+  const [breakInWait, setBreakInWait] = useState(0);
+  const [breakOutWait, setBreakOutWait] = useState(0);
 
   useEffect(() => {
-    if (status === 'on_break' && lastBreakInTime) {
-      const timer = setInterval(() => {
-        const elapsed = (new Date().getTime() - lastBreakInTime.getTime()) / 1000;
-        setCanBreakOutEarly(elapsed >= 60);
-      }, 1000);
-      return () => clearInterval(timer);
-    } else {
-      setCanBreakOutEarly(true);
-    }
-  }, [status, lastBreakInTime]);
+    const timer = setInterval(() => {
+      const now = new Date().getTime();
+
+      // Clock Out Delay
+      if (status === 'clocked_in' && lastCheckInTime) {
+        const elapsed = (now - lastCheckInTime.getTime()) / 1000;
+        const remaining = Math.max(0, Math.ceil(60 - elapsed));
+        setClockOutWait(remaining);
+        setCanClockOutDelay(elapsed >= 60);
+      } else {
+        setCanClockOutDelay(true);
+        setClockOutWait(0);
+      }
+
+      // Break In Delay
+      if (status === 'clocked_in' && lastCheckInTime) {
+        const elapsed = (now - lastCheckInTime.getTime()) / 1000;
+        const remaining = Math.max(0, Math.ceil(60 - elapsed));
+        setBreakInWait(remaining);
+        setCanBreakInDelay(elapsed >= 60);
+      } else {
+        setCanBreakInDelay(true);
+        setBreakInWait(0);
+      }
+
+      // Break Out Delay
+      if (status === 'on_break' && lastBreakInTime) {
+        const elapsed = (now - lastBreakInTime.getTime()) / 1000;
+        const remaining = Math.max(0, Math.ceil(60 - elapsed));
+        setBreakOutWait(remaining);
+        setCanBreakOutDelay(elapsed >= 60);
+      } else {
+        setCanBreakOutDelay(true);
+        setBreakOutWait(0);
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [status, lastCheckInTime, lastBreakInTime]);
 
   // Filter leave requests for current employee only
   const employeeLeaveRequests = user?.role === 'employee'
@@ -436,39 +472,43 @@ export function Dashboard() {
 
               <button
                 onClick={handleClockOut}
-                disabled={!canClockOut || loading}
-                className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all cursor-pointer ${canClockOut
+                disabled={!canClockOut || !canClockOutDelay || loading}
+                className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all cursor-pointer ${canClockOut && canClockOutDelay
                   ? 'bg-red-50 hover:bg-red-100 border-2 border-red-200 hover:border-red-300'
                   : 'bg-gray-100 border-2 border-gray-200 cursor-not-allowed'
                   }`}
               >
-                <LogOut className={`w-8 h-8 mb-2 ${canClockOut ? 'text-red-600' : 'text-gray-400'}`} />
-                <span className={`font-medium ${canClockOut ? 'text-red-700' : 'text-gray-500'}`}>Clock Out</span>
+                <LogOut className={`w-8 h-8 mb-2 ${canClockOut && canClockOutDelay ? 'text-red-600' : 'text-gray-400'}`} />
+                <span className={`font-medium ${canClockOut && canClockOutDelay ? 'text-red-700' : 'text-gray-500'}`}>
+                  Clock Out
+                </span>
               </button>
 
               <button
                 onClick={handleBreakIn}
-                disabled={!canBreakIn || loading}
-                className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all ${canBreakIn
+                disabled={!canBreakIn || !canBreakInDelay || loading}
+                className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all ${canBreakIn && canBreakInDelay
                   ? 'bg-yellow-50 hover:bg-yellow-100 border-2 border-yellow-200 hover:border-yellow-300'
                   : 'bg-gray-100 border-2 border-gray-200 cursor-not-allowed'
                   }`}
               >
-                <Coffee className={`w-8 h-8 mb-2 ${canBreakIn ? 'text-yellow-600' : 'text-gray-400'}`} />
-                <span className={`font-medium ${canBreakIn ? 'text-yellow-700' : 'text-gray-500'}`}>Break In</span>
+                <Coffee className={`w-8 h-8 mb-2 ${canBreakIn && canBreakInDelay ? 'text-yellow-600' : 'text-gray-400'}`} />
+                <span className={`font-medium ${canBreakIn && canBreakInDelay ? 'text-yellow-700' : 'text-gray-500'}`}>
+                  Break In
+                </span>
               </button>
 
               <button
                 onClick={handleBreakOut}
-                disabled={!canBreakOut || !canBreakOutEarly || loading}
-                className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all ${canBreakOut && canBreakOutEarly
+                disabled={!canBreakOut || !canBreakOutDelay || loading}
+                className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all ${canBreakOut && canBreakOutDelay
                   ? 'bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-300'
                   : 'bg-gray-100 border-2 border-gray-200 cursor-not-allowed'
                   }`}
               >
-                <Coffee className={`w-8 h-8 mb-2 rotate-180 ${canBreakOut && canBreakOutEarly ? 'text-blue-600' : 'text-gray-400'}`} />
-                <span className={`font-medium ${canBreakOut && canBreakOutEarly ? 'text-blue-700' : 'text-gray-500'}`}>
-                  {canBreakOut && !canBreakOutEarly ? `Wait ${Math.ceil(60 - (new Date().getTime() - lastBreakInTime!.getTime()) / 1000)}s` : 'Break Out'}
+                <Coffee className={`w-8 h-8 mb-2 rotate-180 ${canBreakOut && canBreakOutDelay ? 'text-blue-600' : 'text-gray-400'}`} />
+                <span className={`font-medium ${canBreakOut && canBreakOutDelay ? 'text-blue-700' : 'text-gray-500'}`}>
+                  Break Out
                 </span>
               </button>
             </div>

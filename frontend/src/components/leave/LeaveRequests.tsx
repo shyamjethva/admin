@@ -241,13 +241,15 @@ export function LeaveRequests() {
           <h1 className="text-3xl font-bold text-gray-800">Leave Requests</h1>
           <p className="text-gray-600 mt-1">Manage leave applications</p>
         </div>
-        <button
-          onClick={handleAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Plus size={20} />
-          Apply Leave
-        </button>
+        {user?.role !== 'admin' && (
+          <button
+            onClick={handleAdd}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Plus size={20} />
+            Apply Leave
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
