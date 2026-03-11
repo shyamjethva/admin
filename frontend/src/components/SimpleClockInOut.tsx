@@ -11,14 +11,30 @@ export function SimpleClockInOut() {
     const [loading, setLoading] = useState(false);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [todayRecord, setTodayRecord] = useState<any>(null);
+    const [clockOutWait, setClockOutWait] = useState(0);
+    const [canClockOutDelay, setCanClockOutDelay] = useState(true);
 
     // Update current date/time every second
     useEffect(() => {
         const timer = setInterval(() => {
             setCurrentDate(new Date());
+
+            // Clock Out Delay Calculation
+            if (isClockedIn && clockInTime) {
+                const istOffset = 5.5 * 60 * 60 * 1000;
+                const now = new Date().getTime() + istOffset;
+                const lastIn = clockInTime.getTime();
+                const elapsed = (now - lastIn) / 1000;
+                const remaining = Math.max(0, Math.ceil(60 - elapsed));
+                setClockOutWait(remaining);
+                setCanClockOutDelay(elapsed >= 60);
+            } else {
+                setCanClockOutDelay(true);
+                setClockOutWait(0);
+            }
         }, 1000);
         return () => clearInterval(timer);
-    }, []);
+    }, [isClockedIn, clockInTime]);
 
     // Fetch today's attendance record on load and periodically
     useEffect(() => {
@@ -129,7 +145,8 @@ export function SimpleClockInOut() {
 
             if (response.success) {
                 // Set local state after successful API call
-                const now = new Date();
+                const istOffset = 5.5 * 60 * 60 * 1000;
+                const now = new Date(new Date().getTime() + istOffset);
                 setIsClockedIn(true);
                 setClockInTime(now);
                 setLiveHours(0);
@@ -217,7 +234,7 @@ export function SimpleClockInOut() {
                     ) : (
                         <button
                             onClick={handleClockOut}
-                            disabled={loading}
+                            disabled={loading || !canClockOutDelay}
                             className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {loading ? (
@@ -228,7 +245,7 @@ export function SimpleClockInOut() {
                             ) : (
                                 <>
                                     <LogOut size={20} />
-                                    <span>Clock Out</span>
+                                    <span>Clock Out {!canClockOutDelay && clockOutWait > 0 ? `(${clockOutWait}s)` : ''}</span>
                                 </>
                             )}
                         </button>

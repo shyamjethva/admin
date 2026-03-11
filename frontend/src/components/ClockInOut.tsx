@@ -9,6 +9,8 @@ export function ClockInOut() {
   const [todayRecord, setTodayRecord] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [statusLoaded, setStatusLoaded] = useState(false);
+  const [clockOutWait, setClockOutWait] = useState(0);
+  const [canClockOutDelay, setCanClockOutDelay] = useState(true);
 
   useEffect(() => {
     // Always check clock status on user login or user state change
@@ -74,9 +76,27 @@ export function ClockInOut() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
+
+      // Clock Out Delay Calculation
+      if (todayRecord && todayRecord.status === 'clocked_in' && todayRecord.lastClockInAt) {
+        const istOffset = 5.5 * 60 * 60 * 1000;
+        const now = new Date().getTime() + istOffset;
+        const lastIn = new Date(todayRecord.lastClockInAt).getTime();
+        const elapsed = (now - lastIn) / 1000;
+        const remaining = Math.max(0, Math.ceil(60 - elapsed));
+        setClockOutWait(remaining);
+        setCanClockOutDelay(elapsed >= 60);
+      } else if (isClockedIn) {
+        // Fallback if todayRecord doesn't have lastClockInAt yet
+        setCanClockOutDelay(true);
+        setClockOutWait(0);
+      } else {
+        setCanClockOutDelay(true);
+        setClockOutWait(0);
+      }
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [todayRecord, isClockedIn]);
   // ...existing code...
   const handleClockOut = async () => {
     if (!user || !todayRecord || loading) return;
@@ -208,7 +228,7 @@ export function ClockInOut() {
             ) : isClockedIn ? (
               <button
                 onClick={handleClockOut}
-                disabled={loading}
+                disabled={loading || !canClockOutDelay}
                 className="w-full py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
@@ -219,7 +239,7 @@ export function ClockInOut() {
                 ) : (
                   <>
                     <LogOut size={20} />
-                    <span>Clock Out</span>
+                    <span>Clock Out {!canClockOutDelay && clockOutWait > 0 ? `(${clockOutWait}s)` : ''}</span>
                   </>
                 )}
               </button>

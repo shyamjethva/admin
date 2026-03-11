@@ -273,6 +273,30 @@ export const breakIn = async (req, res) => {
             });
         }
 
+        // Validation: Minimum 1 minute rule after clock in or previous break end
+        const { istDateObject: nowIST } = getISTInfo();
+        if (attendance.lastClockInAt) {
+            const timeDiff = (nowIST.getTime() - attendance.lastClockInAt.getTime()) / 1000;
+            if (timeDiff < 60) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Must wait at least 1 minute after clock in before taking a break (wait ${Math.ceil(60 - timeDiff)} more seconds)`
+                });
+            }
+        }
+
+        // Also check if they just ended another break
+        const lastBreak = attendance.breaks[attendance.breaks.length - 1];
+        if (lastBreak && lastBreak.breakOutAt) {
+            const timeDiff = (nowIST.getTime() - lastBreak.breakOutAt.getTime()) / 1000;
+            if (timeDiff < 60) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Must wait at least 1 minute after previous break (wait ${Math.ceil(60 - timeDiff)} more seconds)`
+                });
+            }
+        }
+
         // Add break record
         attendance.breaks.push({
             breakInAt: now,

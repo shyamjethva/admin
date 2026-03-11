@@ -146,19 +146,6 @@ export function AuthProvider({
 
       console.log("TOKEN SAVED 👉", localStorage.getItem("token"));
 
-      // ✅ AUTO CLOCK IN - Call clock-in service immediately after login
-      try {
-        console.log("🔄 Triggering auto clock-in for:", userData.name);
-        await clockService.clockIn({
-          employeeId: userData.id,
-          employeeName: userData.name
-        });
-        console.log("✅ Auto clock-in successful");
-      } catch (clockErr) {
-        console.error("❌ Auto clock-in failed:", clockErr);
-        // We don't throw here to avoid blocking login if clock-in fails
-      }
-
       setShowLogin(false);
     } catch (e: any) {
       // Handle role validation error specifically

@@ -233,7 +233,8 @@ export function Dashboard() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const now = new Date().getTime();
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const now = new Date().getTime() + istOffset;
 
       // Clock Out Delay
       if (status === 'clocked_in' && lastCheckInTime) {
@@ -480,7 +481,7 @@ export function Dashboard() {
               >
                 <LogOut className={`w-8 h-8 mb-2 ${canClockOut && canClockOutDelay ? 'text-red-600' : 'text-gray-400'}`} />
                 <span className={`font-medium ${canClockOut && canClockOutDelay ? 'text-red-700' : 'text-gray-500'}`}>
-                  Clock Out
+                  Clock Out {!canClockOutDelay && clockOutWait > 0 ? `(${clockOutWait}s)` : ''}
                 </span>
               </button>
 
@@ -494,7 +495,7 @@ export function Dashboard() {
               >
                 <Coffee className={`w-8 h-8 mb-2 ${canBreakIn && canBreakInDelay ? 'text-yellow-600' : 'text-gray-400'}`} />
                 <span className={`font-medium ${canBreakIn && canBreakInDelay ? 'text-yellow-700' : 'text-gray-500'}`}>
-                  Break In
+                  Break In {!canBreakInDelay && breakInWait > 0 ? `(${breakInWait}s)` : ''}
                 </span>
               </button>
 
@@ -508,7 +509,7 @@ export function Dashboard() {
               >
                 <Coffee className={`w-8 h-8 mb-2 rotate-180 ${canBreakOut && canBreakOutDelay ? 'text-blue-600' : 'text-gray-400'}`} />
                 <span className={`font-medium ${canBreakOut && canBreakOutDelay ? 'text-blue-700' : 'text-gray-500'}`}>
-                  Break Out
+                  Break Out {!canBreakOutDelay && breakOutWait > 0 ? `(${breakOutWait}s)` : ''}
                 </span>
               </button>
             </div>
