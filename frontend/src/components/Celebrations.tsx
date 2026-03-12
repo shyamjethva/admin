@@ -33,10 +33,12 @@ interface WorkAnniversary {
 
 export function Celebrations() {
   const { user } = useAuth();
-  const { holidays, birthdays } = useData();
+  const { employees, departments } = useData();
   const [activeTab, setActiveTab] = useState('holidays');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [holidays, setHolidays] = useState([]);
+  const [birthdays, setBirthdays] = useState([]);
   const [anniversaries, setAnniversaries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -80,21 +82,27 @@ export function Celebrations() {
     });
   };
 
-  // Fetch anniversaries
+  // Fetch celebrations
   useEffect(() => {
-    const fetchAnniversaries = async () => {
+    const fetchCelebrations = async () => {
       setLoading(true);
       try {
-        const response = await api.get('/celebrations?type=anniversary');
-        setAnniversaries(response.data.items || []);
+        const annResponse = await api.get('/celebrations?type=anniversary');
+        setAnniversaries(annResponse.data.items || []);
+
+        const holResponse = await api.get('/celebrations?type=holiday');
+        setHolidays(holResponse.data.items || []);
+
+        const birthResponse = await api.get('/celebrations?type=birthday');
+        setBirthdays(birthResponse.data.items || []);
       } catch (error) {
-        console.error('Error fetching anniversaries:', error);
+        console.error('Error fetching celebrations:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAnniversaries();
+    fetchCelebrations();
   }, []);
 
   const handleAdd = (type: 'holiday' | 'birthday' | 'anniversary') => {
@@ -285,15 +293,25 @@ export function Celebrations() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-800">{holiday.title || holiday.name}</h3>
-                        <p className="text-sm text-gray-600">{holiday.description}</p>
-                        <p className="text-xs text-gray-500 mt-1">{formatDate(holiday.date)}</p>
+                        <div className="flex flex-col gap-1 mt-1">
+                          {holiday.description && <p className="text-sm text-gray-600">{holiday.description}</p>}
+                          {holiday.department && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <MapPin size={14} className="text-blue-400" />
+                              <span>{holiday.department} Department</span>
+                            </div>
+                          )}
+                          <p className="text-xs text-blue-500 font-medium">{formatDate(holiday.date)}</p>
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="inline-block px-3 py-1 bg-blue-600 text-white text-sm rounded-full">
-                        {getDaysUntil(holiday.date)}
-                      </span>
-                      <p className="text-xs text-gray-500 mt-2 capitalize">{holiday.type} Holiday</p>
+                      <div className="inline-flex flex-col items-end gap-1">
+                        <span className="px-3 py-1 bg-blue-600 text-white text-sm font-bold rounded-full shadow-sm">
+                          {getDaysUntil(holiday.date)}
+                        </span>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">{holiday.type} Holiday</p>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -320,21 +338,27 @@ export function Celebrations() {
                         <Cake className="text-white" size={24} />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-800">{birthday.employeeName}</h3>
-                        <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                          <MapPin size={14} />
-                          {birthday.department}
+                        <h3 className="font-semibold text-gray-800">{birthday.employeeName || birthday.title}</h3>
+                        <div className="flex flex-col gap-1 mt-1">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <MapPin size={14} className="text-pink-400" />
+                            <span>{birthday.department || 'All Departments'}</span>
+                          </div>
+                          <p className="text-xs text-pink-500 font-medium">{formatDate(birthday.date)}</p>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">{formatDate(birthday.date)}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="inline-block px-3 py-1 bg-pink-600 text-white text-sm rounded-full">
-                        {getDaysUntil(birthday.date)}
-                      </span>
-                      {birthday.age && (
-                        <p className="text-xs text-gray-500 mt-2">Turning {birthday.age}</p>
-                      )}
+                      <div className="inline-flex flex-col items-end gap-1">
+                        <span className="px-3 py-1 bg-pink-600 text-white text-sm font-bold rounded-full shadow-sm">
+                          {getDaysUntil(birthday.date)}
+                        </span>
+                        {birthday.age ? (
+                          <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Turning {birthday.age}</p>
+                        ) : (
+                          <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Birthday</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -361,23 +385,27 @@ export function Celebrations() {
                         <Award className="text-white" size={24} />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-800">{anniversary.employeeName}</h3>
-                        <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                          <MapPin size={14} />
-                          {anniversary.department}
+                        <h3 className="font-semibold text-gray-800">{anniversary.employeeName || anniversary.title}</h3>
+                        <div className="flex flex-col gap-1 mt-1">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <MapPin size={14} className="text-purple-400" />
+                            <span>{anniversary.department || 'All Departments'}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Joined: {formatDate(anniversary.joinDate)}
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Joined: {formatDate(anniversary.joinDate)}
-                        </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="inline-block px-3 py-1 bg-purple-600 text-white text-sm rounded-full">
-                        {getDaysUntil(anniversary.date)}
-                      </span>
-                      <p className="text-xs text-gray-500 mt-2">
-                        {anniversary.yearsCompleted} {anniversary.yearsCompleted === 1 ? 'Year' : 'Years'}
-                      </p>
+                      <div className="inline-flex flex-col items-end gap-1">
+                        <span className="px-3 py-1 bg-purple-600 text-white text-sm font-bold rounded-full shadow-sm">
+                          {getDaysUntil(anniversary.date)}
+                        </span>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">
+                          {anniversary.yearsCompleted} {anniversary.yearsCompleted === 1 ? 'Year' : 'Years'} Celeb.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -394,19 +422,60 @@ export function Celebrations() {
           title={`${editingItem ? 'Edit' : 'Add'} ${formData.type.charAt(0).toUpperCase() + formData.type.slice(1)}`}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Title/Name Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {formData.type === 'holiday' ? 'Holiday Name' : 'Employee Name'}
-              </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
+            {/* Title Field (Only for Holidays) */}
+            {formData.type === 'holiday' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Holiday Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+            )}
+
+            {/* Employee Name (Dropdown for Birthdays and Anniversaries) */}
+            {(formData.type === 'birthday' || formData.type === 'anniversary') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Employee Name</label>
+                <select
+                  value={formData.employeeName}
+                  onChange={(e) => {
+                    const selectedEmpName = e.target.value;
+                    // Also set title to selectedEmpName for list display consistency
+                    setFormData({ ...formData, employeeName: selectedEmpName, title: selectedEmpName });
+
+                    // Auto-fill department when employee is selected
+                    if (selectedEmpName) {
+                      const selectedEmployee = employees.find((emp: any) =>
+                        emp.name === selectedEmpName
+                      );
+                      if (selectedEmployee && selectedEmployee.department) {
+                        setFormData(prev => ({
+                          ...prev,
+                          employeeName: selectedEmpName,
+                          title: selectedEmpName,
+                          department: selectedEmployee.department
+                        }));
+                      }
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Select Employee</option>
+                  {employees.map((emp: any) => (
+                    <option key={emp.id || emp._id} value={emp.name}>
+                      {emp.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Date Field */}
             <div>
@@ -431,20 +500,24 @@ export function Celebrations() {
               />
             </div>
 
-            {/* Employee-specific fields */}
+            {/* Department (Dropdown for Birthdays and Anniversaries) */}
             {(formData.type === 'birthday' || formData.type === 'anniversary') && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                  <input
-                    type="text"
-                    value={formData.department}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-              </>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <select
+                  value={formData.department}
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept: any) => (
+                    <option key={dept.id || dept._id} value={dept.name}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
 
             {/* Anniversary-specific fields */}

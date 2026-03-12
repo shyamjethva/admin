@@ -104,7 +104,7 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
     { id: 'task-management', label: 'Tasks', icon: CheckSquare },
     { id: 'group-chat', label: 'Team Chat', icon: MessageCircle },
     { id: 'announcements', label: 'Announcements', icon: Megaphone },
-    { id: 'holidays-birthdays', label: 'Celebrations', icon: PartyPopper },
+    { id: 'celebrations', label: 'Celebrations', icon: PartyPopper },
     { id: 'help-support', label: 'Help', icon: HelpCircle },
   ];
 

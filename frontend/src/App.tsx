@@ -12,7 +12,7 @@ import { EmployeeClockRecords } from './components/attendance/EmployeeClockRecor
 import { LeaveRequests } from './components/leave/LeaveRequests';
 import { LeaveTypes } from './components/leave/LeaveTypes';
 import { EmployeeLeaveTypes } from './components/leave/EmployeeLeaveTypes';
-import { HolidaysAndBirthdays } from './components/leave/HolidaysAndBirthdays';
+// import { HolidaysAndBirthdays } from './components/leave/HolidaysAndBirthdays';
 import { JobPostings } from './components/recruitment/JobPostings';
 import { Candidates } from './components/recruitment/Candidates';
 import { InterviewSchedule } from './components/recruitment/InterviewSchedule';
@@ -26,7 +26,6 @@ import { WhatChat } from './components/WhatChat';
 // Removed SimpleClockInOut - now integrated into Dashboard
 import { ClientManagement } from './components/ClientManagement';
 import { Profile } from './components/Profile';
-import { WeeklyWorkPlan } from './components/WeeklyWorkPlan';
 import { TaskManagement } from './components/TaskManagement';
 import { Holidays } from './components/Holidays';
 import { Birthdays } from './components/Birthdays';
@@ -74,8 +73,8 @@ function AppContent() {
         return <LeaveTypes />;
       case 'employee-leave-types':
         return <EmployeeLeaveTypes />;
-      case 'holidays-birthdays':
-        return <HolidaysAndBirthdays />;
+      // case 'holidays-birthdays':
+      //   return <HolidaysAndBirthdays />;
       case 'job-postings':
         return <JobPostings />;
       case 'candidates':
@@ -92,11 +91,12 @@ function AppContent() {
         return <WhatChat />;
       case 'announcements':
         return <Announcements />;
-      case 'holidays-birthdays':
       case 'holidays':
         return <Holidays />;
       case 'birthdays':
         return <Birthdays />;
+      case 'celebrations':
+        return <Celebrations />;
       case 'reports':
         return <Reports />;
       case 'report-test':
