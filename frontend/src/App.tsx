@@ -9,6 +9,7 @@ import { TeamAttendance } from './components/attendance/TeamAttendance';
 import { AttendanceReport } from './components/attendance/AttendanceReport';
 import { Shifts } from './components/attendance/Shifts';
 import { EmployeeClockRecords } from './components/attendance/EmployeeClockRecords';
+import { EmployeeAttendanceReport } from './components/attendance/EmployeeAttendanceReport';
 import { LeaveRequests } from './components/leave/LeaveRequests';
 import { LeaveTypes } from './components/leave/LeaveTypes';
 import { EmployeeLeaveTypes } from './components/leave/EmployeeLeaveTypes';
@@ -65,6 +66,8 @@ function AppContent() {
         return <Shifts />;
       case 'employee-clock-records':
         return <EmployeeClockRecords />;
+      case 'employee-attendance-report':
+        return <EmployeeAttendanceReport />;
       // case 'clock-in-out':
       //   return <SimpleClockInOut />; // Removed - now in Dashboard
       case 'leave-requests':

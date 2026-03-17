@@ -164,6 +164,50 @@ export function EmployeeClockRecords() {
         return `${Math.max(0, diffHours)}h ${Math.max(0, diffMinutes)}m`;
     };
 
+    // Calculate break hours
+    const calculateBreakHours = (record: any) => {
+        // Try to use totals if available
+        if (record.totals && typeof record.totals.totalBreakSeconds === 'number') {
+            const totalMinutes = Math.floor(record.totals.totalBreakSeconds / 60);
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            return `${hours}h ${minutes}m`;
+        }
+
+        // Fallback to breakDuration if available
+        if (typeof record.breakDuration === 'number') {
+            const hours = Math.floor(record.breakDuration / 60);
+            const minutes = record.breakDuration % 60;
+            return `${hours}h ${minutes}m`;
+        }
+
+        // Calculate from strings if available
+        if (!record.breakIn || typeof record.breakIn !== 'string' || !record.breakOut || typeof record.breakOut !== 'string') {
+            return '0h 0m';
+        }
+
+        const inTime = record.breakIn.split(':');
+        const outTime = record.breakOut.split(':');
+
+        if (inTime.length < 2 || outTime.length < 2) return '0h 0m';
+
+        const inDate = new Date();
+        inDate.setHours(parseInt(inTime[0]), parseInt(inTime[1]), 0);
+
+        const outDate = new Date();
+        outDate.setHours(parseInt(outTime[0]), parseInt(outTime[1]), 0);
+
+        let diffMs = outDate.getTime() - inDate.getTime();
+        if (diffMs < 0) {
+            diffMs += 24 * 60 * 60 * 1000; // cross day
+        }
+
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+        return `${diffHours}h ${diffMinutes}m`;
+    };
+
     // Get status badge color
     const getStatusColor = (status: string) => {
         switch (status?.toLowerCase()) {
@@ -274,13 +318,14 @@ export function EmployeeClockRecords() {
                                 <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Break Out</th>
                                 <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Clock Out</th>
                                 <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Working</th>
+                                <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Total Break</th>
                                 <th className="px-6 py-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Status</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filteredRecords.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-6 py-24 text-center">
+                                    <td colSpan={9} className="px-6 py-24 text-center">
                                         <div className="flex flex-col items-center">
                                             <div className="p-4 bg-gray-50 rounded-2xl mb-4">
                                                 <Clock className="h-10 w-10 text-gray-300" />
@@ -292,69 +337,69 @@ export function EmployeeClockRecords() {
                                 </tr>
                             ) : (
                                 filteredRecords.map((record) => (
-                                    <tr key={record.id || record._id} className="hover:bg-blue-50/10 transition-all duration-300 group">
-                                        <td className="px-6 py-5 whitespace-nowrap">
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-11 w-11 flex-shrink-0 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center text-blue-700 font-extrabold border border-blue-200/50 shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
-                                                    {(record.employeeName && typeof record.employeeName === 'string' ? record.employeeName : getEmployeeName(record.employeeId)).charAt(0)}
-                                                </div>
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className="text-sm font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
-                                                        {record.employeeName && typeof record.employeeName === 'string' ?
-                                                            record.employeeName :
-                                                            getEmployeeName(record.employeeId)}
-                                                    </span>
-                                                    <span className="text-[10px] font-bold text-gray-400 tracking-wider flex items-center gap-1.5 uppercase">
-                                                        <span className="w-1 h-1 rounded-full bg-blue-400"></span>
-                                                        {(typeof record.employeeId === 'object' && record.employeeId ?
-                                                            (record.employeeId._id || record.employeeId.id || 'N/A') :
-                                                            String(record.employeeId || 'N/A')).substring(0, 10)}
-                                                    </span>
-                                                </div>
+                                    <tr key={record.id || record._id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-semibold text-gray-900">
+                                                    {record.employeeName && typeof record.employeeName === 'string' ?
+                                                        record.employeeName :
+                                                        getEmployeeName(record.employeeId)}
+                                                </span>
+                                                <span className="text-[10px] font-medium text-gray-500 mt-0.5 italic">
+                                                    N/A
+                                                </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 whitespace-nowrap">
+                                        <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-gray-800">
+                                                <span className="text-sm font-bold text-gray-900">
                                                     {formatDisplayDate(record.date)}
                                                 </span>
-                                                <span className="text-[10px] font-medium text-gray-400 uppercase">{new Date(record.date).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'Asia/Kolkata' })}</span>
+                                                <span className="text-[10px] font-semibold text-gray-400 uppercase mt-0.5">{new Date(record.date).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'Asia/Kolkata' })}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 whitespace-nowrap">
-                                            <div className="flex items-center text-emerald-600 font-bold text-[13px] bg-emerald-50 px-2.5 py-1.5 rounded-xl w-fit border border-emerald-100/50 shadow-sm ring-2 ring-transparent group-hover:ring-emerald-200/20 transition-all">
-                                                <LogIn className="w-3.5 h-3.5 mr-2" />
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center text-emerald-600 font-bold text-[13px]">
+                                                <LogIn className="w-4 h-4 mr-1.5 opacity-80" />
                                                 {formatTime(record.checkIn)}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 whitespace-nowrap">
-                                            <div className="flex items-center text-amber-600 font-bold text-[13px] bg-amber-50 px-2.5 py-1.5 rounded-xl w-fit border border-amber-100/50 shadow-sm ring-2 ring-transparent group-hover:ring-amber-200/20 transition-all">
-                                                <Clock className="w-3.5 h-3.5 mr-2" />
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center text-gray-800 font-bold text-[13px]">
+                                                <Clock className="w-4 h-4 mr-1.5 opacity-80" />
                                                 {formatTime(record.breakIn)}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 whitespace-nowrap">
-                                            <div className="flex items-center text-blue-600 font-bold text-[13px] bg-blue-50 px-2.5 py-1.5 rounded-xl w-fit border border-blue-100/50 shadow-sm ring-2 ring-transparent group-hover:ring-blue-200/20 transition-all">
-                                                <Clock className="w-3.5 h-3.5 mr-2 opacity-50" />
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center text-blue-600 font-bold text-[13px]">
+                                                <Clock className="w-4 h-4 mr-1.5 opacity-80" />
                                                 {formatTime(record.breakOut)}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 whitespace-nowrap">
-                                            <div className="flex items-center text-rose-600 font-bold text-[13px] bg-rose-50 px-2.5 py-1.5 rounded-xl w-fit border border-rose-100/50 shadow-sm ring-2 ring-transparent group-hover:ring-rose-200/20 transition-all">
-                                                <LogOut className="w-3.5 h-3.5 mr-2" />
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center text-gray-900 font-bold text-[13px]">
+                                                <LogOut className="w-4 h-4 mr-1.5 opacity-80" />
                                                 {formatTime(record.checkOut)}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 whitespace-nowrap">
+                                        <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex flex-col gap-0.5">
-                                                <span className="text-sm font-black text-gray-900 bg-gray-100/80 px-2.5 py-1 rounded-lg w-fit">
+                                                <span className="text-[13px] font-bold text-gray-700">
                                                     {calculateHours(record)}
                                                 </span>
-                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Total Active Time</span>
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Total Active Time</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 whitespace-nowrap text-center">
-                                            <span className={`px-4 py-1.5 inline-flex text-[10px] leading-4 font-black uppercase tracking-[0.1em] rounded-full shadow-sm border ${getStatusColor(record.status)}`}>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-[13px] font-bold text-gray-700">
+                                                    {calculateBreakHours(record)}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Total Break Time</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold uppercase tracking-[0.05em] rounded-full shadow-sm border ${getStatusColor(record.status)}`}>
                                                 {String(record.status || 'ABSENT').replace('_', ' ')}
                                             </span>
                                         </td>

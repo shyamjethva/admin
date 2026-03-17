@@ -33,6 +33,7 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'employee-attendance-report', label: 'Attendance Report', icon: CalendarCheck, roles: ['employee'] },
     {
       id: 'employees',
       label: 'Employees',
