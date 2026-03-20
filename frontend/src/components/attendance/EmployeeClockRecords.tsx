@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Filter, Search, LogIn, LogOut } from 'lucide-react';
+import { Calendar, Clock, User, Filter, Search, LogIn, LogOut, Edit } from 'lucide-react';
+import { EditClockRecordModal } from './EditClockRecordModal';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -10,6 +11,13 @@ export function EmployeeClockRecords() {
     const [dateFilter, setDateFilter] = useState('');
     const [employeeFilter, setEmployeeFilter] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedRecord, setSelectedRecord] = useState<any>(null);
+
+    const handleEditClick = (record: any) => {
+        setSelectedRecord(record);
+        setIsEditModalOpen(true);
+    };
 
     // Fetch clock records on component mount
     useEffect(() => {
@@ -320,12 +328,13 @@ export function EmployeeClockRecords() {
                                 <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Working</th>
                                 <th className="px-6 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Total Break</th>
                                 <th className="px-6 py-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Status</th>
+                                <th className="px-6 py-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-[0.15rem] border-b border-gray-100">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filteredRecords.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="px-6 py-24 text-center">
+                                    <td colSpan={10} className="px-6 py-24 text-center">
                                         <div className="flex flex-col items-center">
                                             <div className="p-4 bg-gray-50 rounded-2xl mb-4">
                                                 <Clock className="h-10 w-10 text-gray-300" />
@@ -403,6 +412,15 @@ export function EmployeeClockRecords() {
                                                 {String(record.status || 'ABSENT').replace('_', ' ')}
                                             </span>
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <button
+                                                onClick={() => handleEditClick(record)}
+                                                className="p-1.5 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
+                                                title="Edit Record"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))
                             )}
@@ -410,6 +428,12 @@ export function EmployeeClockRecords() {
                     </table>
                 </div>
             </div>
+
+            <EditClockRecordModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                record={selectedRecord}
+            />
         </div>
     );
 }

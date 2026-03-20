@@ -642,6 +642,8 @@ export const DataProvider = ({ children }) => {
         date: attendanceEntry.date,
         checkIn: attendanceEntry.checkIn,
         checkOut: attendanceEntry.checkOut,
+        breakIn: attendanceEntry.breakIn,
+        breakOut: attendanceEntry.breakOut,
         status: mapStatus(attendanceEntry.status),
         hours: attendanceEntry.hours, // ✅ IMPORTANT
         notes: attendanceEntry.notes,
