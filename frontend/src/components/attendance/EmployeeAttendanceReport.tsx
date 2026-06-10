@@ -6,9 +6,12 @@ import { useAuth } from '../../context/AuthContext';
 export function EmployeeAttendanceReport() {
     const { clockRecords, fetchData } = useData();
     const { user } = useAuth();
-    const [selectedMonth, setSelectedMonth] = useState(() => {
+    const [selectedDate, setSelectedDate] = useState(() => {
         const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     });
 
     useEffect(() => {
@@ -22,9 +25,9 @@ export function EmployeeAttendanceReport() {
             : record.employeeId;
 
         const isMe = String(recordEmpId) === String(user?.id || (user as any)?._id);
-        const isThisMonth = record.date && record.date.startsWith(selectedMonth);
+        const isThisDay = record.date && record.date === selectedDate;
 
-        return isMe && isThisMonth;
+        return isMe && isThisDay;
     }).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     // Calculate working hours
@@ -128,12 +131,12 @@ export function EmployeeAttendanceReport() {
                     <div className="space-y-2 w-full md:w-1/4">
                         <label className="flex items-center gap-2 text-[13px] font-bold text-gray-700 uppercase tracking-wider">
                             <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                            Select Month
+                            Select Date
                         </label>
                         <input
-                            type="month"
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
                             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium text-gray-700"
                         />
                     </div>
@@ -177,7 +180,7 @@ export function EmployeeAttendanceReport() {
                                                 <Clock className="h-10 w-10 text-gray-300" />
                                             </div>
                                             <h3 className="text-base font-bold text-gray-900">No records found</h3>
-                                            <p className="text-sm text-gray-500 mt-1">There are no attendance logs for this month.</p>
+                                            <p className="text-sm text-gray-500 mt-1">There are no attendance logs for the selected date.</p>
                                         </div>
                                     </td>
                                 </tr>

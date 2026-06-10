@@ -4,8 +4,13 @@ let socket: Socket | null = null;
 
 export const initializeSocket = (token: string) => {
     if (!socket) {
-        // Derive socket URL from the API base URL (strip /api suffix)
-        const apiBase = (import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:5001/api';
+        // Derive socket URL from the API base URL (strip /api suffix).
+        const configuredBaseUrl = (import.meta as any).env?.VITE_BACKEND_URL;
+        const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+        const apiBase =
+            configuredBaseUrl && (isLocalHost || !configuredBaseUrl.includes("localhost"))
+                ? configuredBaseUrl
+                : window.location.origin + "/api";
         const socketUrl = apiBase.replace(/\/api\/?$/, '');
 
         console.log('Creating new socket connection to:', socketUrl);

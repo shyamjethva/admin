@@ -1,9 +1,16 @@
 // src/services/api.ts
 import axios from 'axios';
 
+const configuredBaseUrl = import.meta.env.VITE_BACKEND_URL;
+const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+const baseURL =
+    configuredBaseUrl && (isLocalHost || !configuredBaseUrl.includes("localhost"))
+        ? configuredBaseUrl
+        : "/api";
+
 // Create axios instance with default config
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api', // Back to port 5000 as you mentioned
+    baseURL,
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json',

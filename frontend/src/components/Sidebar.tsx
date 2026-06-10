@@ -111,7 +111,7 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
 
   const hasAccess = (roles?: string[]) => {
     if (!roles || roles.length === 0) return true;
-    return user && roles.includes(user.role);
+    return user && roles.some(role => role.toLowerCase() === user.role?.toLowerCase());
   };
 
   const filteredMenuItems = menuItems.filter(item => {

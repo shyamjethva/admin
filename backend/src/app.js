@@ -35,10 +35,17 @@ import { errorMiddleware } from "./middleware/errormiddleware.js";
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://admin.errorinfotech.in",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 // Frontend is Vite by default (5173). Keep 3000 too (sometimes people run React on 3000).
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
