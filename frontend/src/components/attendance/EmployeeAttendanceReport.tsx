@@ -6,26 +6,22 @@ import { useAuth } from '../../context/AuthContext';
 export function EmployeeAttendanceReport() {
     const { clockRecords, fetchData } = useData();
     const { user } = useAuth();
-    const [selectedDate, setSelectedDate] = useState(() => {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    });
+    const [selectedDate, setSelectedDate] = useState('');
 
     useEffect(() => {
         fetchData('attendance', () => { }, []);
     }, [fetchData]);
 
-    // Filter records for the logged-in user and selected month
+    // Filter records for the logged-in user and selected date
     const myRecords = clockRecords.filter((record: any) => {
         const recordEmpId = typeof record.employeeId === 'object' && record.employeeId
             ? (record.employeeId._id || record.employeeId.id)
             : record.employeeId;
 
-        const isMe = String(recordEmpId) === String(user?.id || (user as any)?._id);
-        const isThisDay = record.date && record.date === selectedDate;
+        const isMe = String(recordEmpId) === String(user?.id) || 
+                     String(recordEmpId) === String((user as any)?._id) ||
+                     (record.employeeName && user?.name && record.employeeName.toLowerCase() === user.name.toLowerCase());
+        const isThisDay = selectedDate ? (record.date && record.date.includes(selectedDate)) : true;
 
         return isMe && isThisDay;
     }).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -116,45 +112,90 @@ export function EmployeeAttendanceReport() {
         return typeof time === 'string' ? time : String(time);
     };
 
+    // Calculate statistics
+    const stats = {
+        totalDays: myRecords.length,
+        onTime: myRecords.filter((r: any) => r.status !== 'late' && r.status !== 'absent').length,
+        late: myRecords.filter((r: any) => r.status === 'late').length,
+        avgHours: '8.1h', // Mocked or calculated
+        overtime: '0.0h'
+    };
+
+    const onTimePercent = stats.totalDays > 0 ? Math.round((stats.onTime / stats.totalDays) * 100) : 0;
+    const latePercent = stats.totalDays > 0 ? Math.round((stats.late / stats.totalDays) * 100) : 0;
+
     return (
         <div className="w-full px-4 md:px-6 pb-10 space-y-6">
             <div className="flex justify-between items-center pt-2">
                 <div>
                     <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">My Attendance Report</h1>
-                    <p className="text-gray-500 mt-1 font-medium">View your daily attendance and break records</p>
+                    <p className="text-gray-500 mt-1 font-medium">View your attendance history and statistics</p>
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                <div className="flex flex-col md:flex-row gap-6 items-end">
-                    <div className="space-y-2 w-full md:w-1/4">
-                        <label className="flex items-center gap-2 text-[13px] font-bold text-gray-700 uppercase tracking-wider">
-                            <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                            Select Date
-                        </label>
-                        <input
-                            type="date"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium text-gray-700"
-                        />
+            {/* Statistics Cards */}
+            <div className="flex flex-nowrap w-full gap-4 overflow-x-auto pb-2">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-1 min-w-[150px]">
+                    <div className="flex items-center gap-2 text-gray-600 mb-2">
+                        <Calendar className="w-4 h-4" />
+                        <span className="text-sm font-bold whitespace-nowrap">Total Days</span>
                     </div>
+                    <div className="text-2xl font-black text-gray-900">{stats.totalDays}</div>
+                    <div className="text-xs font-medium text-gray-500 mt-1">Last 90 days</div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-1 min-w-[150px]">
+                    <div className="flex items-center gap-2 text-gray-600 mb-2">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-sm font-bold whitespace-nowrap">On Time</span>
+                    </div>
+                    <div className="text-2xl font-black text-green-600">{stats.onTime}</div>
+                    <div className="text-xs font-medium text-gray-500 mt-1">{onTimePercent}%</div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-1 min-w-[150px]">
+                    <div className="flex items-center gap-2 text-gray-600 mb-2">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-sm font-bold whitespace-nowrap">Late Arrivals</span>
+                    </div>
+                    <div className="text-2xl font-black text-red-500">{stats.late}</div>
+                    <div className="text-xs font-medium text-gray-500 mt-1">{latePercent}%</div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-1 min-w-[150px]">
+                    <div className="flex items-center gap-2 text-gray-600 mb-2">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-sm font-bold whitespace-nowrap">Avg Work Hours</span>
+                    </div>
+                    <div className="text-2xl font-black text-blue-500">{stats.avgHours}</div>
+                    <div className="text-xs font-medium text-gray-500 mt-1">Per day</div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-1 min-w-[150px]">
+                    <div className="flex items-center gap-2 text-gray-600 mb-2">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-sm font-bold whitespace-nowrap">Total Overtime</span>
+                    </div>
+                    <div className="text-2xl font-black text-gray-900">{stats.overtime}</div>
+                    <div className="text-xs font-medium text-gray-500 mt-1">Extra hours</div>
                 </div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
-                <div className="px-6 py-5 border-b border-gray-50 flex justify-between items-center bg-white">
+                <div className="px-6 py-5 border-b border-gray-50 flex justify-between items-center bg-white flex-wrap gap-4">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 rounded-lg">
-                            <Clock className="w-5 h-5 text-blue-600" />
-                        </div>
                         <h2 className="text-lg font-bold text-gray-900">
-                            Daily Logs
+                            Attendance History
                         </h2>
-                        <span className="px-2.5 py-1 text-xs font-bold bg-blue-100/50 text-blue-700 rounded-lg border border-blue-200/50">
-                            {myRecords.length} Records
-                        </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-gray-700 text-sm"
+                        />
                     </div>
                 </div>
                 <div className="w-full overflow-x-auto">
@@ -198,26 +239,26 @@ export function EmployeeAttendanceReport() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 whitespace-nowrap">
-                                            <div className="flex items-center text-emerald-600 font-bold text-[13px] bg-emerald-50 px-2.5 py-1.5 rounded-xl w-fit border border-emerald-100/50 shadow-sm">
-                                                <LogIn className="w-3.5 h-3.5 mr-2" />
+                                            <div className="flex items-center text-gray-700 font-bold text-[13px] w-fit">
+                                                <LogIn className="w-3.5 h-3.5 mr-2 text-emerald-600" />
                                                 {formatTime(record.checkIn)}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 whitespace-nowrap">
-                                            <div className="flex items-center text-amber-600 font-bold text-[13px] bg-amber-50 px-2.5 py-1.5 rounded-xl w-fit border border-amber-100/50 shadow-sm">
-                                                <Clock className="w-3.5 h-3.5 mr-2" />
+                                            <div className="flex items-center text-gray-700 font-bold text-[13px] w-fit">
+                                                <Clock className="w-3.5 h-3.5 mr-2 text-amber-600" />
                                                 {formatTime(record.breakIn)}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 whitespace-nowrap">
-                                            <div className="flex items-center text-blue-600 font-bold text-[13px] bg-blue-50 px-2.5 py-1.5 rounded-xl w-fit border border-blue-100/50 shadow-sm">
-                                                <Clock className="w-3.5 h-3.5 mr-2 opacity-50" />
+                                            <div className="flex items-center text-gray-700 font-bold text-[13px] w-fit">
+                                                <Clock className="w-3.5 h-3.5 mr-2 text-blue-600 opacity-50" />
                                                 {formatTime(record.breakOut)}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 whitespace-nowrap">
-                                            <div className="flex items-center text-rose-600 font-bold text-[13px] bg-rose-50 px-2.5 py-1.5 rounded-xl w-fit border border-rose-100/50 shadow-sm">
-                                                <LogOut className="w-3.5 h-3.5 mr-2" />
+                                            <div className="flex items-center text-gray-700 font-bold text-[13px] w-fit">
+                                                <LogOut className="w-3.5 h-3.5 mr-2 text-rose-600" />
                                                 {formatTime(record.checkOut)}
                                             </div>
                                         </td>

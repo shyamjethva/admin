@@ -10,7 +10,7 @@ export function EmployeeClockRecords() {
     const [filteredRecords, setFilteredRecords] = useState<any[]>([]);
     const [dateFilter, setDateFilter] = useState('');
     const [employeeFilter, setEmployeeFilter] = useState('');
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState<any>(null);
 
@@ -34,7 +34,19 @@ export function EmployeeClockRecords() {
 
         // Date filter
         if (dateFilter) {
-            records = records.filter(record => record.date === dateFilter);
+            records = records.filter(record => {
+                try {
+                    // Try to normalize both dates to YYYY-MM-DD
+                    const rDate = new Date(record.date);
+                    const fDate = new Date(dateFilter);
+                    if (!isNaN(rDate.getTime()) && !isNaN(fDate.getTime())) {
+                        return rDate.toISOString().split('T')[0] === fDate.toISOString().split('T')[0];
+                    }
+                } catch (e) {
+                    // Fallback to strict string comparison
+                }
+                return record.date === dateFilter;
+            });
         }
 
         // Employee filter
@@ -56,22 +68,12 @@ export function EmployeeClockRecords() {
             });
         }
 
-        // Search filter
-        if (searchTerm) {
-            const term = searchTerm.toLowerCase();
+        // Search text filter
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
             records = records.filter(record => {
-                // Extract employee name safely
-                const empName = typeof record.employeeName === 'string' ?
-                    record.employeeName :
-                    getEmployeeName(record.employeeId);
-
-                // Extract status safely
-                const status = typeof record.status === 'string' ?
-                    record.status :
-                    String(record.status || '');
-
-                return (empName && empName.toLowerCase().includes(term)) ||
-                    status.toLowerCase().includes(term);
+                const empName = record.employeeName ? String(record.employeeName).toLowerCase() : '';
+                return empName.includes(query);
             });
         }
 
@@ -95,7 +97,7 @@ export function EmployeeClockRecords() {
         });
 
         setFilteredRecords(records);
-    }, [clockRecords, dateFilter, employeeFilter, searchTerm, employees]);
+    }, [clockRecords, dateFilter, employeeFilter, employees]);
 
     // Get employee name by ID
     const getEmployeeName = (employeeId: any) => {
@@ -247,7 +249,7 @@ export function EmployeeClockRecords() {
 
             {/* Filters */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 items-end">
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-[13px] font-bold text-gray-700 uppercase tracking-wider">
                             <Calendar className="w-3.5 h-3.5 text-blue-600" />
@@ -279,22 +281,18 @@ export function EmployeeClockRecords() {
                             ))}
                         </select>
                     </div>
-
-                    <div className="md:col-span-2 space-y-2">
+                    <div className="space-y-2">
                         <label className="flex items-center gap-2 text-[13px] font-bold text-gray-700 uppercase tracking-wider">
                             <Search className="w-3.5 h-3.5 text-blue-600" />
-                            Search Records
+                            Search Record
                         </label>
-                        <div className="relative group">
-                            <input
-                                type="text"
-                                placeholder="     Search by name, status or ID..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-14 pr-2 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium text-gray-700"
-                            />
-                            {/* <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" /> */}
-                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search by employee name..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium text-gray-700 placeholder-gray-400"
+                        />
                     </div>
                 </div>
             </div>

@@ -128,7 +128,7 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
         backgroundColor: '#2563eb' // blue-600
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
+          <div className="sidebar-header-content text-left ml-3">
             <h1 style={{
               fontSize: '20px',
               fontWeight: 'bold',
@@ -168,7 +168,7 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
           )}
         </div>
         {user && (
-          <div style={{
+          <div className="sidebar-header-content" style={{
             marginTop: '16px',
             backgroundColor: 'rgba(255,255,255,0.1)',
             padding: '12px',
@@ -195,7 +195,7 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
       {/* Navigation */}
       <nav style={{
         flex: 1,
-        padding: '16px',
+        padding: '16px 12px',
         overflowY: 'scroll',
         /* Hide scrollbar for IE, Edge and Firefox */
         msOverflowStyle: 'none',  /* IE and Edge */
@@ -227,7 +227,7 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '12px 16px',
+                    padding: '12px 12px',
                     borderRadius: '8px',
                     marginBottom: '4px',
                     cursor: item.hasSubmenu ? 'pointer' : 'pointer',
@@ -237,29 +237,34 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
                   }}
                 >
                   <item.icon size={20} style={{
+                    minWidth: '20px',
                     marginRight: '12px',
-                    color: activePage === item.id || isActiveParent ? 'white' : '#9ca3af'
+                    color: activePage === item.id || isActiveParent ? 'white' : '#9ca3af',
+                    flexShrink: 0
                   }} />
-                  <span style={{
+                  <span className="sidebar-text" style={{
                     fontSize: '14px',
                     fontWeight: '500',
                     color: 'white',
-                    flex: 1
+                    flex: 1,
+                    marginLeft: '4px'
                   }}>
                     {item.label}
                   </span>
                   {item.hasSubmenu && (
-                    <ChevronDown
-                      size={16}
-                      style={{
-                        color: activePage === item.id || isActiveParent ? 'white' : '#9ca3af',
-                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.2s'
-                      }}
-                    />
+                    <div className="sidebar-text">
+                      <ChevronDown
+                        size={16}
+                        style={{
+                          color: activePage === item.id || isActiveParent ? 'white' : '#9ca3af',
+                          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s'
+                        }}
+                      />
+                    </div>
                   )}
                   {item.id === 'group-chat' && unreadCountsByType?.message > 0 && (
-                    <span style={{
+                    <span className="sidebar-text" style={{
                       marginLeft: 'auto',
                       backgroundColor: '#ef4444', // red-500
                       color: 'white',
@@ -276,7 +281,7 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
                     </span>
                   )}
                   {item.id === 'announcements' && unreadCountsByType?.announcement > 0 && (
-                    <span style={{
+                    <span className="sidebar-text" style={{
                       marginLeft: 'auto',
                       backgroundColor: '#ef4444', // red-500
                       color: 'white',
@@ -296,7 +301,7 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
 
                 {/* Submenu items */}
                 {item.hasSubmenu && isExpanded && (
-                  <div style={{
+                  <div className="sidebar-text" style={{
                     paddingLeft: '20px',
                     marginTop: '4px',
                     marginBottom: '4px',
@@ -320,8 +325,10 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
                         }}
                       >
                         <subItem.icon size={16} style={{
+                          minWidth: '16px',
                           marginRight: '10px',
-                          color: activePage === subItem.id ? '#93c5fd' : '#9ca3af' // blue-300
+                          color: activePage === subItem.id ? '#93c5fd' : '#9ca3af', // blue-300
+                          flexShrink: 0
                         }} />
                         <span style={{
                           fontSize: '13px',
@@ -341,7 +348,7 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
 
       {/* Footer */}
       <div style={{
-        padding: '16px',
+        padding: '16px 12px',
         borderTop: '1px solid #374151',
         backgroundColor: '#1f2937' // gray-800
       }}>
@@ -351,7 +358,7 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
             display: 'flex',
             alignItems: 'center',
             width: '100%',
-            padding: '12px 16px',
+            padding: '12px 12px',
             borderRadius: '8px',
             backgroundColor: 'transparent',
             border: 'none',
@@ -361,13 +368,16 @@ export function Sidebar({ activePage, setActivePage, isOpen = false, setIsOpen }
           }}
         >
           <LogOut size={18} style={{
+            minWidth: '18px',
             marginRight: '12px',
-            color: '#9ca3af'
+            color: '#9ca3af',
+            flexShrink: 0
           }} />
-          <span style={{
+          <span className="sidebar-text" style={{
             fontSize: '14px',
             fontWeight: '500',
-            color: 'white'
+            color: 'white',
+            marginLeft: '4px'
           }}>
             Sign Out
           </span>

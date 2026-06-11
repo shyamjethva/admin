@@ -123,7 +123,7 @@ function AppContent() {
         <style dangerouslySetInnerHTML={{
           __html: `
           .app-sidebar {
-            width: 256px !important;
+            width: 76px !important;
             background-color: #111827 !important;
             color: white !important;
             height: 100vh !important;
@@ -131,8 +131,37 @@ function AppContent() {
             flex-direction: column !important;
             border-right: 1px solid #374151 !important;
             flex-shrink: 0 !important;
-            transition: transform 0.3s ease-in-out !important;
+            transition: width 0.3s ease-in-out, transform 0.3s ease-in-out !important;
             z-index: 50 !important;
+            overflow: hidden !important;
+          }
+          
+          @media (min-width: 768px) {
+            .app-sidebar:hover {
+              width: 256px !important;
+            }
+          }
+          
+          .sidebar-text {
+            opacity: 0;
+            white-space: nowrap;
+            transition: opacity 0.2s ease-in-out;
+            pointer-events: none;
+          }
+          
+          .app-sidebar:hover .sidebar-text {
+            opacity: 1;
+            pointer-events: auto;
+          }
+          
+          .sidebar-header-content {
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            white-space: nowrap;
+          }
+          
+          .app-sidebar:hover .sidebar-header-content {
+            opacity: 1;
           }
           .hide-on-desktop {}
           .show-on-desktop { display: none !important; }

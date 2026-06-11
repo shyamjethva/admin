@@ -277,7 +277,7 @@ export function WhatChat() {
       </div>
 
       {/* Messages */}
-      <div style={{
+      <div className="chat-scroll" style={{
         flex: 1,
         overflowY: 'auto',
         padding: '1rem',
@@ -377,7 +377,7 @@ export function WhatChat() {
                     </div>
                   )}
                   {msg.message && (
-                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.875rem' }}>{msg.message}</div>
+                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.875rem', wordBreak: 'break-word', overflowWrap: 'break-word' }}>{msg.message}</div>
                   )}
                   <div
                     style={{
